@@ -38,6 +38,7 @@ So, await member.create_dm() will tell python to start creating a dm, but don't 
 to send a message until the dm channel is created, because you can't send a message
 without a dm channel. In the meantime, python will go handle other stuff that may be running. 
 '''
+# Use on_ready() for debug purposes.
 # @bot.event
 # async def on_ready():
 #     guild = discord.utils.get(bot.guilds, name=GUILD)
@@ -49,17 +50,26 @@ without a dm channel. In the meantime, python will go handle other stuff that ma
 #         f'Guild Members: \n - {members}'
 #     )
 
+
 @bot.event
 async def on_member_join(member):
     await member.send("Imagine.")
 
 @bot.event
 async def on_guild_join(guild):
-    await guild.create_text_channel('among-us')
-    await guild.create_text_channel('memes')
-    await guild.create_voice_channel('Among Us')
-    await guild.create_voice_channel('League')
-    await guild.create_voice_channel('AFK')
+    for category in guild.categories:
+        if category.name == 'Text Channels':
+            text_category = category
+        elif category.name == 'Voice Channels':
+            voice_category = category
+        else:
+            print('Welp. Ur dumb.')
+
+    await guild.create_text_channel('among-us', category=text_category)
+    await guild.create_text_channel('memes', category=text_category)
+    await guild.create_voice_channel('Among Us', category=voice_category)
+    await guild.create_voice_channel('League', category=voice_category)
+    await guild.create_voice_channel('AFK', category=voice_category)
 
 @bot.command(name='text', help='prints some random text')
 async def bot_text(ctx):
