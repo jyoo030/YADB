@@ -8,7 +8,9 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 
-bot = commands.Bot(command_prefix='!')
+intents = discord.Intents.default()
+intents.members = True
+bot = commands.Bot(command_prefix='!', intents = intents)
 
 '''
 DECORATOR 
@@ -29,10 +31,10 @@ to run at the same time, so one user could, say request music from the bot
 while another is playing a game of blackjack with the bot.
 -----------------------------------------------------------------------------
 AWAIT
-await is a keywork unique to async functions. It can only be run within async functions.
+await is a keyword unique to async functions. It can only be run within async functions.
 You use await when calling async functions within async functions. This tells python
 to stop running code at that line, and go do other things while that code returns. 
-So, await memeber.create_dm() will tell python to start creating a dm, but don't try
+So, await member.create_dm() will tell python to start creating a dm, but don't try
 to send a message until the dm channel is created, because you can't send a message
 without a dm channel. In the meantime, python will go handle other stuff that may be running. 
 '''
@@ -49,10 +51,7 @@ async def on_ready():
 
 @bot.event
 async def on_member_join(member):
-    await member.create_dm()
-    await member.dm_channel.send(
-        f'Hi {member.name}, welcome to my Discord server! We''re still testing at the moment, so please bear with us.'
-    )
+    await member.send("Imagine.")
 
 @bot.command(name='text', help='prints some random text')
 async def bot_text(ctx):
