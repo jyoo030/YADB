@@ -38,20 +38,28 @@ So, await member.create_dm() will tell python to start creating a dm, but don't 
 to send a message until the dm channel is created, because you can't send a message
 without a dm channel. In the meantime, python will go handle other stuff that may be running. 
 '''
-@bot.event
-async def on_ready():
-    guild = discord.utils.get(bot.guilds, name=GUILD)
-    members = '\n - '.join([member.name for member in guild.members])
+# @bot.event
+# async def on_ready():
+#     guild = discord.utils.get(bot.guilds, name=GUILD)
+#     members = '\n - '.join([member.name for member in guild.members])
 
-    print(
-        f'{bot.user} is connected to the following guild:\n'
-        f'{guild.name} (id: {guild.id})\n'
-        f'Guild Members: \n - {members}'
-    )
+#     print(
+#         f'{bot.user} is connected to the following guild:\n'
+#         f'{guild.name} (id: {guild.id})\n'
+#         f'Guild Members: \n - {members}'
+#     )
 
 @bot.event
 async def on_member_join(member):
     await member.send("Imagine.")
+
+@bot.event
+async def on_guild_join(guild):
+    await guild.create_text_channel('among-us')
+    await guild.create_text_channel('memes')
+    await guild.create_voice_channel('Among Us')
+    await guild.create_voice_channel('League')
+    await guild.create_voice_channel('AFK')
 
 @bot.command(name='text', help='prints some random text')
 async def bot_text(ctx):
