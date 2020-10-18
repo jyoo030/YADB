@@ -39,6 +39,9 @@ So, await member.create_dm() will tell python to start creating a dm, but don't 
 to send a message until the dm channel is created, because you can't send a message
 without a dm channel. In the meantime, python will go handle other stuff that may be running. 
 '''
+
+# Jonathan shouldn't have put his phone underwater.  
+
 # Use on_ready() for debug purposes.
 # @bot.event
 # async def on_ready():
