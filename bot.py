@@ -13,6 +13,7 @@ intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+#region tutorial
 '''
 DECORATOR 
 the @bot.event is a decorator provided by discord.py what this means 
@@ -53,7 +54,11 @@ without a dm channel. In the meantime, python will go handle other stuff that ma
 #         f'{guild.name} (id: {guild.id})\n'
 #         f'Guild Members: \n - {members}'
 #     )
+#endregion
 
+@bot.event
+async def on_ready():
+    print(f'Logged in as:\n\tUser: {bot.user.name}\n\tID: {bot.user.id}\n\tVersion: {discord.__version__}\n')
 
 @bot.event
 async def on_member_join(member):
@@ -89,4 +94,6 @@ async def coin_flip(ctx):
         await ctx.send("Tails")
 
 
+if __name__ == '__main__':
+    bot.load_extension('music')
 bot.run(TOKEN)
