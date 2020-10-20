@@ -3,6 +3,7 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+import random
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -74,5 +75,15 @@ async def on_guild_join(guild):
 @bot.command(name='text', help='prints some random text')
 async def bot_text(ctx):
     await ctx.send("Hello this is some random text!")
+
+@bot.command(name='coinflip', help='Randomly flips a coin for you')
+async def coin_flip(ctx):
+    flip= random.randint (0,2)
+
+    if (flip==0):
+        await ctx.send("Heads")
+    else:
+        await ctx.send("Tails")
+
 
 bot.run(TOKEN)
