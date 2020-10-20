@@ -3,6 +3,7 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+import random
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -77,6 +78,12 @@ async def bot_text(ctx):
 
 @bot.command(name='coinflip', help='prints some random text')
 async def coin_flip(ctx):
+    flip= random.randint (0,2)
     
+    if (flip=0):
+        ctx.send("Heads")
+    else:
+        ctx.send("Tails")
+
 
 bot.run(TOKEN)
