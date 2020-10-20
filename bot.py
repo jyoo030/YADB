@@ -79,11 +79,11 @@ async def bot_text(ctx):
 @bot.command(name='coinflip', help='prints some random text')
 async def coin_flip(ctx):
     flip= random.randint (0,2)
-    
-    if (flip=0):
-        ctx.send("Heads")
+
+    if (flip==0):
+        await ctx.send("Heads")
     else:
-        ctx.send("Tails")
+        await ctx.send("Tails")
 
 
 bot.run(TOKEN)
