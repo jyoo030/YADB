@@ -75,4 +75,8 @@ async def on_guild_join(guild):
 async def bot_text(ctx):
     await ctx.send("Hello this is some random text!")
 
+@bot.command(name='coinflip', help='prints some random text')
+async def coin_flip(ctx):
+    
+
 bot.run(TOKEN)
