@@ -29,29 +29,36 @@ class MusicPlayer(commands.Cog):
             'outtmpl':SAVE_PATH + '/%(title)s.%(ext)s',
         }
 
-        with youtube_dl.YoutubeDL(ydl_config) as ydl:
-            loop = asyncio.get_event_loop()
-            try:
-                if bool(urlparse(arg).scheme):
-                    await loop.run_in_exectutor(None, ydl.download, [arg])
-                else:
-                    await loop.run_in_executor(None, ydl.extract_info, f"ytsearch1:{arg}")
-            except:
-                await ctx.send("Youtube bug error, try again.")
-                return
+        for i in range(0, 5):
+            with youtube_dl.YoutubeDL(ydl_config) as ydl:
+                loop = asyncio.get_event_loop()
+                did_run = False
+                try:
+                    if bool(urlparse(arg).scheme):
+                        await loop.run_in_executor(None, ydl.download, [arg])
+                    else:
+                        await loop.run_in_executor(None, ydl.extract_info, f"ytsearch1:{arg}")
+                    did_run = True
+                    break
+                except:
+                    # Youtube-dl currently has a bug with youtube changing JSON formats recently.
+                    # It's a pretty new bug but I expect it to be fixed soon.
+                    await ctx.send(f"Bug: Youtube giving incorrect data sometimes. Going to try 5 times total... {i+1}/5")
+
+        if not did_run:
+            await ctx.send("Youtube being doo doo, try this command again please")
+            return None
 
         for file in os.listdir(SAVE_PATH):
             if file.endswith(".mp3"):
-                song = file
+                song = os.path.join(SAVE_PATH, file)
         
-        await ctx.send("Playing song now.")
         voice_client = await self.join_vc_bot(ctx)
-        if not voice_client:
-            return
-
-        voice_client.play(discord.FFmpegPCMAudio(os.path.join(SAVE_PATH, song)))
-        voice_client.volume = 100
-        voice_client.is_playing()
+        if voice_client:
+            await ctx.send("Playing song now.")
+            voice_client.play(discord.FFmpegPCMAudio(song))
+            voice_client.volume = 100
+            voice_client.is_playing()
 
     @music_player.error
     async def music_player_error(self, ctx, error):
@@ -74,7 +81,8 @@ class MusicPlayer(commands.Cog):
     async def join_vc_bot(self, ctx):
         if not ctx.author.voice:
             await ctx.send("Hey man, I can't play a song if you're not in a voice channel")
-            return
+            print("ERROR: User not in voice channel")
+            return None
 
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
         if voice_client and voice_client.is_connected():
