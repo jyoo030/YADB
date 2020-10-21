@@ -86,11 +86,10 @@ async def coin_flip(ctx):
         await ctx.send("Tails")
 
 @bot.command(name='dicetoss', help='Randomly tosses x number of y sided dice with the command dicetoss x y')
-async def dice_toss(ctx, arg):
-    parameter = arg
+async def dice_toss(ctx, parameter):
     dice_total = 0
-    for i in range(parameter[0]):
-        toss= random.randint (1,parameter[1]+1)
+    for i in range(int(parameter[0])):
+        toss= random.randint (1,int(parameter[1])+1)
         await ctx.send(toss)
         dice_total += toss
     await ctx.send(dice_total)
