@@ -89,13 +89,25 @@ async def coin_flip(ctx):
 async def dice_toss(ctx, *parameter):
     dice_total = 0
     toss_list = []
+
+    if (len(parameter)!=2):
+        await ctx.send('Function dice toss requires 2 parameters!')
+        return
+    if (int(parameter[0])>10):
+        await ctx.send('You cannot roll more than 10 dice!')
+        return
+    if (int(parameter[1])>20):
+        await ctx.send('You cannot have a dice with more than 20 sides!')
+        return
+
     for i in range(int(parameter[0])):
         toss = random.randint(1,int(parameter[1]))
         toss_list.append(toss)
         dice_total += toss
         formatted_output = ' + '.join(str(toss) for toss in toss_list)
-    await ctx.send(formatted_output)
+
+    await ctx.send(f"{ctx.author}, your rolls are: {formatted_output}")
     if parameter[0] != "1":
-        await ctx.send(dice_total)
+        await ctx.send(f"{ctx.author}, your total is: {dice_total}")
     
 bot.run(TOKEN)
