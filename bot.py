@@ -109,6 +109,6 @@ async def dice_toss(ctx, *parameter):
     if parameter[0] == "1":
         await ctx.send(f"{ctx.author}, your roll is: \n{dice_total}")
     else:
-        await ctx.send(f"{ctx.author}, your rolls are: \n{formatted_output}\n{ctx.author}, your total is: \n{dice_total}")
+        await ctx.send(f"{ctx.author}, your rolls are: \n{formatted_output}\nfor a total of: \n{dice_total}")
     
 bot.run(TOKEN)
