@@ -95,7 +95,7 @@ async def coin_flip(ctx):
 
 story = []
 valid_input = ['start', 'add', 'delete', 'finish']
-@bot.command(name='ows', help='Players input one words at a time to form a story. \n"owsdelete" deletes the most recent addition \n"owsfinish" finishes the story and gives you the completed story.')
+@bot.command(name='ows', help='Players input one words at a time to form a story. \n"ows start" starts a new story" \n"ows delete" deletes the most recent addition \n"ows finish" finishes the story and gives you the completed story.')
 async def ows(ctx, *parameter):
     if parameter[0] not in valid_input:
         await ctx.send("Please use a valid input. Valid keywords are: start, add, delete, finish")
