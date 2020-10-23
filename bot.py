@@ -85,14 +85,13 @@ async def coin_flip(ctx):
     else:
         await ctx.send("Tails")
 
-@bot.command(name='dicetoss', help='Randomly tosses x number of y sided dice with the command dicetoss x y')
-async def dice_toss(ctx, *parameter):
+@bot.command(name='dicetoss', help='Randomly tosses x number of y sided dice with the command dicetoss xdy')
+async def dice_toss(ctx, parameter):
     dice_total = 0
     toss_list = []
 
-    if (len(parameter)!=2):
-        await ctx.send('Function dice toss requires 2 parameters!')
-        return
+    parameter = parameter.split('d')
+    
     if (int(parameter[0])>10):
         await ctx.send('You cannot roll more than 10 dice!')
         return
