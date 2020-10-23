@@ -11,8 +11,9 @@ GUILD = os.getenv('DISCORD_GUILD')
 
 intents = discord.Intents.default()
 intents.members = True
-bot = commands.Bot(command_prefix='!', intents = intents)
+bot = commands.Bot(command_prefix='!', intents=intents)
 
+#region tutorial
 '''
 DECORATOR 
 the @bot.event is a decorator provided by discord.py what this means 
@@ -39,6 +40,9 @@ So, await member.create_dm() will tell python to start creating a dm, but don't 
 to send a message until the dm channel is created, because you can't send a message
 without a dm channel. In the meantime, python will go handle other stuff that may be running. 
 '''
+
+# Jonathan shouldn't have put his phone underwater.  
+
 # Use on_ready() for debug purposes.
 # @bot.event
 # async def on_ready():
@@ -50,7 +54,11 @@ without a dm channel. In the meantime, python will go handle other stuff that ma
 #         f'{guild.name} (id: {guild.id})\n'
 #         f'Guild Members: \n - {members}'
 #     )
+#endregion
 
+@bot.event
+async def on_ready():
+    print(f'Logged in as:\n\tUser: {bot.user.name}\n\tID: {bot.user.id}\n\tVersion: {discord.__version__}\n')
 
 @bot.event
 async def on_member_join(member):
@@ -110,4 +118,36 @@ async def dice_toss(ctx, parameter):
     else:
         await ctx.send(f"{ctx.author}, your rolls are: \n{formatted_output}\nfor a total of: \n{dice_total}")
     
+story = []
+valid_input = ['start', 'add', 'delete', 'finish']
+@bot.command(name='ows', help='Players input one words at a time to form a story. \n"ows start" starts a new story" \n"ows delete" deletes the most recent addition \n"ows finish" finishes the story and gives you the completed story.')
+async def ows(ctx, *parameter):
+    if parameter[0] not in valid_input:
+        await ctx.send("Please use a valid input. Valid keywords are: start, add, delete, finish")
+        
+    elif len(story) == 0:
+        if parameter[0] == "start":
+            await ctx.send("One Word Story game started!")
+            story.append("   ")
+        else:
+            await ctx.send("You must start a story first!")
+
+    else:
+        if parameter[0] == "start":
+            await ctx.send("You have already started a story. Please finish the previous story before beginning a new one.")
+        elif parameter[0] == "add":
+            story.append(parameter[1])
+        elif parameter[0] == "delete":
+            await ctx.send(f'Removed the word "{story.pop()}" from the one word story')
+        elif parameter[0] == "finish":
+            if len(story) > 1:
+                await ctx.send(" ".join(story))
+                story.clear()
+            else:
+                await ctx.send("Haven't put anything into the story dumbass")
+        else:
+            print("Shouldn't ever get here but aight")
+    
+if __name__ == '__main__':
+    bot.load_extension('music')
 bot.run(TOKEN)
