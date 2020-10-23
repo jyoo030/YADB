@@ -93,6 +93,31 @@ async def coin_flip(ctx):
     else:
         await ctx.send("Tails")
 
+@bot.command(name='dicetoss', help='Randomly tosses x number of y sided dice with the command dicetoss xdy')
+async def dice_toss(ctx, parameter):
+    dice_total = 0
+    toss_list = []
+
+    parameter = parameter.split('d')
+    
+    if (int(parameter[0])>10):
+        await ctx.send('You cannot roll more than 10 dice!')
+        return
+    if (int(parameter[1])>20):
+        await ctx.send('You cannot have a dice with more than 20 sides!')
+        return
+
+    for i in range(int(parameter[0])):
+        toss = random.randint(1,int(parameter[1]))
+        toss_list.append(toss)
+        dice_total += toss
+        formatted_output = ' + '.join(str(toss) for toss in toss_list)
+
+    if parameter[0] == "1":
+        await ctx.send(f"{ctx.author}, your roll is: \n{dice_total}")
+    else:
+        await ctx.send(f"{ctx.author}, your rolls are: \n{formatted_output}\nfor a total of: \n{dice_total}")
+    
 story = []
 valid_input = ['start', 'add', 'delete', 'finish']
 @bot.command(name='ows', help='Players input one words at a time to form a story. \n"ows start" starts a new story" \n"ows delete" deletes the most recent addition \n"ows finish" finishes the story and gives you the completed story.')
