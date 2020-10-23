@@ -93,7 +93,36 @@ async def coin_flip(ctx):
     else:
         await ctx.send("Tails")
 
+story = []
+valid_input = ['start', 'add', 'delete', 'finish']
+@bot.command(name='ows', help='Players input one words at a time to form a story. \n"owsdelete" deletes the most recent addition \n"owsfinish" finishes the story and gives you the completed story.')
+async def ows(ctx, *parameter):
+    if parameter[0] not in valid_input:
+        await ctx.send("Please use a valid input. Valid keywords are: start, add, delete, finish")
+        
+    elif len(story) == 0:
+        if parameter[0] == "start":
+            await ctx.send("One Word Story game started!")
+            story.append("   ")
+        else:
+            await ctx.send("You must start a story first!")
 
+    else:
+        if parameter[0] == "start":
+            await ctx.send("You have already started a story. Please finish the previous story before beginning a new one.")
+        elif parameter[0] == "add":
+            story.append(parameter[1])
+        elif parameter[0] == "delete":
+            await ctx.send(f'Removed the word "{story.pop()}" from the one word story')
+        elif parameter[0] == "finish":
+            if len(story) > 1:
+                await ctx.send(" ".join(story))
+                story.clear()
+            else:
+                await ctx.send("Haven't put anything into the story dumbass")
+        else:
+            print("Shouldn't ever get here but aight")
+    
 if __name__ == '__main__':
     bot.load_extension('music')
 bot.run(TOKEN)
