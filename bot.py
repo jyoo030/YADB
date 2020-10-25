@@ -93,7 +93,9 @@ async def coin_flip(ctx):
     else:
         await ctx.send("Tails")
 
-
+@bot.command(name='madlibs', help='Asks for a series of words and forms a story with those words in it')
+async def mad_libs(ctx):
+    
 if __name__ == '__main__':
     bot.load_extension('music')
 bot.run(TOKEN)
