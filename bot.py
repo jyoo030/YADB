@@ -93,7 +93,14 @@ async def coin_flip(ctx):
     else:
         await ctx.send("Tails")
 
+@bot.command(name='percentagecalculator', help= 'calculates what x percent of y is')
+async def percentageCalculator(ctx,*parameter):
+    x = parameter[0]
+    y = parameter[1]
+    await ctx.send (f'{x}% of {y} is: {int(x)/100 * int(y)}' )
+
+#reeeeeeee
 
 if __name__ == '__main__':
-    bot.load_extension('music')
+     bot.load_extension('music')
 bot.run(TOKEN)
