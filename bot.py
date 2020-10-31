@@ -80,6 +80,12 @@ async def on_guild_join(guild):
     await guild.create_voice_channel('League', category=voice_category)
     await guild.create_voice_channel('AFK', category=voice_category)
 
+
+@bot.event
+async def say_good_bye():
+    
+
+
 @bot.command(name='text', help='prints some random text')
 async def bot_text(ctx):
     await ctx.send("Hello this is some random text!")
