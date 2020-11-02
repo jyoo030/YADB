@@ -1,4 +1,4 @@
-import os
+import os, sys
 
 import discord
 from discord.ext import commands
@@ -6,15 +6,15 @@ from dotenv import load_dotenv
 import random
 
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD = os.getenv('DISCORD_GUILD')
+TOKEN = os.getenv("DISCORD_TOKEN")
+GUILD = os.getenv("DISCORD_GUILD")
 
 intents = discord.Intents.default()
 intents.members = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-#region tutorial
-'''
+# region tutorial
+"""
 DECORATOR 
 the @bot.event is a decorator provided by discord.py what this means 
 is that it does something before, after or before and after a function is run. 
@@ -39,9 +39,9 @@ to stop running code at that line, and go do other things while that code return
 So, await member.create_dm() will tell python to start creating a dm, but don't try
 to send a message until the dm channel is created, because you can't send a message
 without a dm channel. In the meantime, python will go handle other stuff that may be running. 
-'''
+"""
 
-# Jonathan shouldn't have put his phone underwater.  
+# Jonathan shouldn't have put his phone underwater.
 
 # Use on_ready() for debug purposes.
 # @bot.event
@@ -54,41 +54,48 @@ without a dm channel. In the meantime, python will go handle other stuff that ma
 #         f'{guild.name} (id: {guild.id})\n'
 #         f'Guild Members: \n - {members}'
 #     )
-#endregion
+# endregion
+
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as:\n\tUser: {bot.user.name}\n\tID: {bot.user.id}\n\tVersion: {discord.__version__}\n')
+    print(
+        f"Logged in as:\n\tUser: {bot.user.name}\n\tID: {bot.user.id}\n\tVersion: {discord.__version__}\n"
+    )
+
 
 @bot.event
 async def on_member_join(member):
     await member.send("Imagine.")
 
+
 @bot.event
 async def on_guild_join(guild):
     for category in guild.categories:
-        if category.name == 'Text Channels':
+        if category.name == "Text Channels":
             text_category = category
-        elif category.name == 'Voice Channels':
+        elif category.name == "Voice Channels":
             voice_category = category
         else:
-            print('Welp. Ur dumb.')
+            print("Welp. Ur dumb.")
 
-    await guild.create_text_channel('among-us', category=text_category)
-    await guild.create_text_channel('memes', category=text_category)
-    await guild.create_voice_channel('Among Us', category=voice_category)
-    await guild.create_voice_channel('League', category=voice_category)
-    await guild.create_voice_channel('AFK', category=voice_category)
+    await guild.create_text_channel("among-us", category=text_category)
+    await guild.create_text_channel("memes", category=text_category)
+    await guild.create_voice_channel("Among Us", category=voice_category)
+    await guild.create_voice_channel("League", category=voice_category)
+    await guild.create_voice_channel("AFK", category=voice_category)
 
-@bot.command(name='text', help='prints some random text')
+
+@bot.command(name="text", help="prints some random text")
 async def bot_text(ctx):
     await ctx.send("Hello this is some random text!")
 
-@bot.command(name='coinflip', help='Randomly flips a coin for you')
-async def coin_flip(ctx):
-    flip= random.randint (0,2)
 
-    if (flip==0):
+@bot.command(name="coinflip", help="Randomly flips a coin for you")
+async def coin_flip(ctx):
+    flip = random.randint(0, 2)
+
+    if flip == 0:
         await ctx.send("Heads")
     else:
         await ctx.send("Tails")
@@ -153,7 +160,8 @@ async def ows(ctx, *parameter):
                 await ctx.send("Haven't put anything into the story dumbass")
         else:
             print("Shouldn't ever get here but aight")
-    
-if __name__ == '__main__':
-     bot.load_extension('music')
+
+
+if __name__ == "__main__":
+    bot.load_extension("cogs.music")
 bot.run(TOKEN)
