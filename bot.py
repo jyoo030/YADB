@@ -95,7 +95,10 @@ async def coin_flip(ctx):
 
 @bot.command(name='madlibs', help='Asks for a series of words and forms a story with those words in it')
 async def mad_libs(ctx):
-    
+    num = '{:03}'.format(random.randrange(1, 189))
+    url = f"https://www.madtakes.com/libs/{num}.html"
+    print(url)
+
 if __name__ == '__main__':
     bot.load_extension('music')
 bot.run(TOKEN)
