@@ -97,7 +97,11 @@ async def coin_flip(ctx):
 async def mad_libs(ctx):
     num = '{:03}'.format(random.randrange(1, 189))
     url = f"https://www.madtakes.com/libs/{num}.html"
-    print(url)
+    session = HTMLSession()
+    res = session.get(url)
+
+    search_results = res.html.find('script', )
+
 
 if __name__ == '__main__':
     bot.load_extension('music')
