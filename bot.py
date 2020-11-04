@@ -63,11 +63,9 @@ async def on_ready():
         f"Logged in as:\n\tUser: {bot.user.name}\n\tID: {bot.user.id}\n\tVersion: {discord.__version__}\n"
     )
 
-
 @bot.event
 async def on_member_join(member):
     await member.send("Imagine.")
-
 
 @bot.event
 async def on_guild_join(guild):
@@ -84,12 +82,6 @@ async def on_guild_join(guild):
     await guild.create_voice_channel("Among Us", category=voice_category)
     await guild.create_voice_channel("League", category=voice_category)
     await guild.create_voice_channel("AFK", category=voice_category)
-
-
-@bot.command(name="text", help="prints some random text")
-async def bot_text(ctx):
-    await ctx.send("Hello this is some random text!")
-
 
 @bot.command(name="coinflip", help="Randomly flips a coin for you")
 async def coin_flip(ctx):
@@ -115,21 +107,19 @@ async def dice_toss(ctx, parameter):
     
     if (int(parameter[0])>10):
         await ctx.send('You cannot roll more than 10 dice!')
-        return
-    if (int(parameter[1])>20):
+    elif (int(parameter[1])>20):
         await ctx.send('You cannot have a dice with more than 20 sides!')
-        return
-
-    for i in range(int(parameter[0])):
-        toss = random.randint(1,int(parameter[1]))
-        toss_list.append(toss)
-        dice_total += toss
-        formatted_output = ' + '.join(str(toss) for toss in toss_list)
-
-    if parameter[0] == "1":
-        await ctx.send(f"{ctx.author}, your roll is: \n{dice_total}")
     else:
-        await ctx.send(f"{ctx.author}, your rolls are: \n{formatted_output}\nfor a total of: \n{dice_total}")
+        for i in range(int(parameter[0])):
+            toss = random.randint(1,int(parameter[1]))
+            toss_list.append(toss)
+            dice_total += toss
+            formatted_output = ' + '.join(str(toss) for toss in toss_list)
+
+        if parameter[0] == "1":
+            await ctx.send(f"{ctx.author}, your roll is: \n{dice_total}")
+        else:
+            await ctx.send(f"{ctx.author}, your rolls are: \n{formatted_output}\nfor a total of: \n{dice_total}")
     
 story = []
 valid_input = ['start', 'add', 'delete', 'finish']
