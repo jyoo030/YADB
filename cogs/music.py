@@ -33,8 +33,8 @@ class MusicPlayer(commands.Cog):
 
             voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
             if len(self._queue) > 0:
-                song = self._queue.pop()
-                voice_client.play(discord.FFmpegPCMAudio(song.mp3), after=lambda e: play_next(ctx))
+                song = self._queue.pop(0)
+                voice_client.play(discord.FFmpegPCMAudio(song.mp3), after=lambda e: play_next(ctx, song.mp3))
             else:
                 asyncio.run_coroutine_threadsafe(voice_client.disconnect(), self._loop)
 
@@ -69,7 +69,7 @@ class MusicPlayer(commands.Cog):
         else: 
             output = "the current queue is: \n"
             for index, song in enumerate(self._queue):
-                output += f"{index}): {song.title}\n"
+                output += f"{index + 1}): {song.title}\n"
 
             await ctx.send(output)
 
