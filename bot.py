@@ -85,6 +85,11 @@ async def on_guild_join(guild):
     await guild.create_voice_channel("League", category=voice_category)
     await guild.create_voice_channel("AFK", category=voice_category)
 
+@bot.event
+async def on_voice_state_update(member, before, after):
+    if before.channel != after.channel:
+        await member.send("Goodbye")
+
 
 @bot.command(name="text", help="prints some random text")
 async def bot_text(ctx):
@@ -161,7 +166,8 @@ async def ows(ctx, *parameter):
         else:
             print("Shouldn't ever get here but aight")
 
-
+'''
 if __name__ == "__main__":
     bot.load_extension("cogs.music")
 bot.run(TOKEN)
+'''
