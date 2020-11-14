@@ -10,9 +10,12 @@ title = res.html.find('title', first=True).text
 
 user_inputs = soup.find(id='mG_188')
 text_chunk = soup.find(bgcolor='#d0d0d0')
+for i in text_chunk.select('br'):
+    i.replace_with('\n')
 
 inputs = user_inputs.find_all('td', align='right')
 
+print(inputs)
 string = str(text_chunk.text).strip()
 
 def countWord(word):
@@ -40,3 +43,4 @@ for word in inputs:
 
 print(string)
 print(input_list)
+
