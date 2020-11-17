@@ -10,6 +10,8 @@ title = res.html.find('title', first=True).text
 
 user_inputs = soup.find(id='mG_188')
 text_chunk = soup.find(bgcolor='#d0d0d0')
+for i in text_chunk.select('br'):
+    i.replace_with('\n')
 
 inputs = user_inputs.find_all('td', align='right')
 
@@ -33,6 +35,7 @@ def countWord(word):
     
 num_words = countWord(string.strip())
 
+word_id_list = []
 for i in range(1, num_words+1):
     thing = str(user_inputs.find(id=f"w{i}"))
     if 'hidden' in thing:
