@@ -1,29 +1,23 @@
 from requests_html import HTMLSession
 from bs4 import BeautifulSoup
+import random as rand
 
-url = r"https://www.madtakes.com/libs/188.html"
+rand_num = f'{rand.randrange(1,188):03}'
+
+url = r"https://www.madtakes.com/libs/num.html"
+
+url = url.replace('num', rand_num)
+print(url)
 session = HTMLSession()
 res = session.get(url)
 soup = BeautifulSoup(res.content, 'html.parser')
 
-title = res.html.find('title', first=True).text
+user_inputs = soup.find(style='margin-bottom: 20px')
 
-user_inputs = soup.find(id='mG_188')
 text_chunk = soup.find(bgcolor='#d0d0d0')
 for i in text_chunk.select('br'):
     i.replace_with('\n')
-
-inputs = user_inputs.find_all('td', align='right')
-
-testing = user_inputs.find_all('input')
-
 string = str(text_chunk.text).strip()
-
-input_list = []
-for word in inputs:
-    input_list.append(word.text)
-
-id_list = []
 
 def countWord(word):
 
@@ -32,23 +26,25 @@ def countWord(word):
         if word[i-1:i+3] == 'WORD':
             numWord += 1
     return numWord
-    
-num_words = countWord(string.strip())
 
-word_id_list = []
+input_list = []
+inputs = user_inputs.find_all('td', align='right')
+for word in inputs:
+    input_list.append(word.text)
+
+id_list = []
+num_words = countWord(string)
 for i in range(1, num_words+1):
-    thing = str(user_inputs.find(id=f"w{i}"))
-    if 'hidden' in thing:
-        index = thing.find('value')
-        id_num = thing[index+9]
+    ids = str(user_inputs.find(id=f"w{i}"))
+    if 'hidden' in ids:
+        index = ids.find('value')
+        id_num = ids[index+9]
     else:
-        index = thing.find('id')
-        id_num = thing[index+5]
+        index = ids.find('id')
+        id_num = ids[index+5]
     id_list.append(id_num)
-print(id_list)
-word_dict = {}
 
-word_list = ['a', 'a', 'a', 'a', 'a', 'a']
+word_dict = {}
 counter = 0
 for i in range(num_words):
     num = id_list[i]
@@ -61,13 +57,4 @@ for i in range(num_words):
 for i in range(num_words):
     string = string.replace("WORD", word_dict[i+1], 1)
 
-break_text = text_chunk.find('br')
-print(break_text.get_text)
-
-
-
-
-
-print(string)
-print(input_list)
-
+print('\n', string)
