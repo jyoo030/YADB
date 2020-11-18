@@ -12,6 +12,8 @@ GUILD = os.getenv("DISCORD_GUILD")
 intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+client = commands.Bot(command_prefix='.')
+client = discord.Client()
 
 # region tutorial
 """
@@ -83,6 +85,14 @@ async def on_guild_join(guild):
     await guild.create_voice_channel("League", category=voice_category)
     await guild.create_voice_channel("AFK", category=voice_category)
 
+
+
+@bot.event
+async def on_member_remove(member):
+    general = client.get_channel(766003288456953899)
+    await general.send(f"Goodbye, {member} or {member.nick}")
+
+
 @bot.command(name="coinflip", help="Randomly flips a coin for you")
 async def coin_flip(ctx):
     flip = random.randint(0, 2)
@@ -151,8 +161,6 @@ async def ows(ctx, *parameter):
         else:
             print("Shouldn't ever get here but aight")
 
-'''
 if __name__ == "__main__":
     bot.load_extension("cogs.music")
 bot.run(TOKEN)
-'''
