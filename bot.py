@@ -4,8 +4,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 import random
-from requests_html import HTMLSession
-from bs4 import BeautifulSoup
+
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -163,35 +162,9 @@ async def ows(ctx, *parameter):
         else:
             print("Shouldn't ever get here but aight")
 
-@bot.command(name='madlibs', help='Asks for a series of words and forms a story with those words in it')
-async def mad_libs(ctx):
-    # num = '{:03}'.format(random.randrange(1, 189))
-    # url = f"https://www.madtakes.com/libs/{num}.html"
-    url = r"https://www.madtakes.com/libs/188.html"
-    session = HTMLSession()
-    res = session.get(url)
-    soup = BeautifulSoup(res.content, 'html.parser')
-
-    title = res.html.find('title', first=True).text
-
-    user_inputs = soup.find(id='mG_188')
-    text_chunk = soup.find(bgcolor='#d0d0d0')
-
-    inputs = user_inputs.find_all('td', align='right')
-
-    string = str(text_chunk.text)
-
-    for word in word_list:
-        string = string.replace("WORD", word, 1)
-
-    input_list = []
-    for word in inputs:
-        input_list.append(word.text)
-        print(word.text)
-
-    print(string)
-    print(input_list)
     
 if __name__ == "__main__":
     bot.load_extension("cogs.music")
+    bot.load_extension("cogs.madlibs")
+    
 bot.run(TOKEN)
