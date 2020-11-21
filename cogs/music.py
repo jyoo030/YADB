@@ -29,10 +29,12 @@ class MusicPlayer(commands.Cog):
             if os.path.exists(old_song):
                 os.remove(old_song)
             else:
-                print("Error deleting recently played song")
+                print(f"Error deleting recently played song {old_song}")
 
             voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
-            if len(self._queue) > 0:
+            if not voice_client:
+                return
+            elif len(self._queue) > 0:
                 song = self._queue.pop(0)
                 voice_client.play(discord.FFmpegPCMAudio(song.mp3), after=lambda e: play_next(ctx, song.mp3))
             else:
@@ -43,8 +45,8 @@ class MusicPlayer(commands.Cog):
         try:
             song = await self._loop.run_in_executor(None, YoutubeDownloader().download, song_name, self._SAVE_PATH)
         except Exception as err:
-            print(err)
             await ctx.send("the music player is still in alpha and crashes sometimes, please try again.")
+            raise err
 
         if not voice_client.is_playing():
             await ctx.send(f"Now Playing: {song.title}")
@@ -62,6 +64,18 @@ class MusicPlayer(commands.Cog):
         else:
             print(error)
     
+    @commands.command(name="search", help="display and choose song from search")
+    async def display_search(self, ctx, *, song_name):
+        results = await self._loop.run_in_executor(None, YoutubeDownloader().multi_search, song_name, self._SAVE_PATH)
+
+        output = f"Search Results for: {song_name}\n"
+        for index, result in enumerate(results):
+            output += f"{index+1}): {result.title}\n"
+        
+        await ctx.send(output)
+
+
+
     @commands.command(name="queue", help="displays music queue")
     async def show_queue(self, ctx):
         if len(self._queue) == 0:
