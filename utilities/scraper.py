@@ -29,30 +29,28 @@ class SongInfo():
     @property
     def mp3(self):
         return self._mp3
+    
+    @property
+    def output_path(self):
+        return self._output_path
     #endregion
 
     def __init__(self, title, url, output_path):
         self._title = title
         self._url = f'https://www.youtube.com{url}'
         self._cleaned_title = title.replace(',', '').replace('.', '')
-        self._mp4 = os.path.join(f"{output_path}", "{self._cleaned_title}.mp4")
-        self._mp3 = os.path.join(f"{output_path}", "{self._cleaned_title}.mp3")
+        self._mp4 = os.path.join(f"{output_path}", f"{self._cleaned_title}.mp4")
+        self._mp3 = os.path.join(f"{output_path}", f"{self._cleaned_title}.mp3")
+        self._output_path = output_path
 
 class YoutubeDownloader():
     def __init__(self):
         pass
 
-    def download(self, query, output_path):
+    def download(self, song):
         #TODO: Add support for direct URL's
-        json_results = self.search(query)
 
-        song = SongInfo(
-            json_results[0]['videoRenderer']['title']['runs'][0]['text'],
-            json_results[0]['videoRenderer']['navigationEndpoint']['commandMetadata']['webCommandMetadata']['url'],
-            output_path
-        )
-
-        YouTube(song.url).streams.first().download(output_path=output_path)
+        YouTube(song.url).streams.first().download(output_path=song.output_path)
         ffmpeg.input(song.mp4).output(song.mp3).run()
 
         if os.path.exists(song.mp4):
@@ -61,32 +59,42 @@ class YoutubeDownloader():
             print("There was an error with finding the download location.")
 
         return song
-   #TODO: Multi search, single search, and download all separate functions to compartmentalize better. 
+
     def multi_search(self, query, output_path):
-        result = []
-        json_results = self.search(query)
+        song_results = []
+        json_results = self.__get_search(query)
         result_length = min(len(json_results), 10)
 
         for i in range(result_length):
-            result.append(SongInfo(
+            song_results.append(SongInfo(
                     json_results[i]['videoRenderer']['title']['runs'][0]['text'],
                     json_results[i]['videoRenderer']['navigationEndpoint']['commandMetadata']['webCommandMetadata']['url'],
                     output_path))
         
-        return result
+        return song_results
     
-    def search(self, query):
+    def solo_search(self, query, output_path):
+        json_results = self.__get_search(query)
+
+        song = SongInfo(
+            json_results[0]['videoRenderer']['title']['runs'][0]['text'],
+            json_results[0]['videoRenderer']['navigationEndpoint']['commandMetadata']['webCommandMetadata']['url'],
+            output_path)
+
+        return song
+    
+    def __get_search(self, query):
         formatted_query = '+'.join(query.split())
         url = f'https://www.youtube.com/results?search_query={formatted_query}'
-        return self.extract_search_results(url)
+        return self.__extract_search_results(url)
 
-    def extract_search_results(self, url):
+    def __extract_search_results(self, url):
         session = HTMLSession()
         res = session.get(url)
         search_results = res.html.find('script', containing='var ytInitialData', first=True)
-        return self.parse_json(search_results)
+        return self.__parse_json(search_results)
 
-    def parse_json(self, search_results):
+    def __parse_json(self, search_results):
         # Grabs JSON of scraper data from HTML response without extra text
         regex = r"\/\/ scraper_data_begin var ytInitialData = ([\S\s]*)\/\/ scraper_data_end"
 
