@@ -163,8 +163,7 @@ async def ows(ctx, *parameter):
                 await ctx.send("Haven't put anything into the story dumbass")
         else:
             print("Shouldn't ever get here but aight")
-'''
 if __name__ == "__main__":
     bot.load_extension("cogs.music")
-'''
+
 bot.run(TOKEN)
