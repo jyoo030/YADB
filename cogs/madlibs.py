@@ -72,17 +72,18 @@ class MadLibs(commands.Cog):
             elif counter<len(input_list):
                 try:
                     await ctx.send(f"Please enter a {input_list[counter]}: ")
-                    answer = await bot.wait_for('message', check=check, timeout=30)
+                    answer = await self.bot.wait_for('message', check=check, timeout=30)
                 except asyncio.TimeoutError:
                     await ctx.send("Sorry, you didn't respond in time. Please respond within 30 seconds!")
                     break
+        
                 word_dict[i+1] = answer.content.lower()
                 counter += 1
 
         for i in range(num_words):
             string = string.replace("WORD", word_dict[i+1], 1)
         
-        await ctx.send('\n', string)
+        await ctx.send(string)
 
 def setup(bot):
     bot.add_cog(MadLibs(bot))
