@@ -90,7 +90,6 @@ async def on_guild_join(guild):
 @bot.event
 async def on_member_remove(member):
     general = discord.utils.get(member.guild.channels, name="sayonara")
-    print(member.nick)
     if member.nick == None:
         await general.send(f"Goodbye, {member}")
     else:
