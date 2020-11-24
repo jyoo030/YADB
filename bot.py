@@ -89,8 +89,12 @@ async def on_guild_join(guild):
 
 @bot.event
 async def on_member_remove(member):
-    general = discord.utils.get(member.guild.channels, name="general")
-    await general.send(f"Goodbye, {member} or {member.nick}")
+    general = discord.utils.get(member.guild.channels, name="sayonara")
+    print(member.nick)
+    if member.nick == None:
+        await general.send(f"Goodbye, {member}")
+    else:
+        await general.send(f"Goodbye, {member}, also known as {member.nick}")
 
 
 @bot.command(name="coinflip", help="Randomly flips a coin for you")
@@ -160,7 +164,8 @@ async def ows(ctx, *parameter):
                 await ctx.send("Haven't put anything into the story dumbass")
         else:
             print("Shouldn't ever get here but aight")
-
+'''
 if __name__ == "__main__":
     bot.load_extension("cogs.music")
+'''
 bot.run(TOKEN)
