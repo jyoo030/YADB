@@ -89,7 +89,7 @@ async def on_guild_join(guild):
 
 @bot.event
 async def on_member_remove(member):
-    general = client.get_channel(766003288456953899)
+    general = discord.utils.get(member.guild.channels, name="general")
     await general.send(f"Goodbye, {member} or {member.nick}")
 
 
