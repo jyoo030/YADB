@@ -26,7 +26,7 @@ class MadLibs(commands.Cog):
         soup = BeautifulSoup(res.content, 'html.parser')
 
         title = res.html.find('title', first=True).text
-
+        await ctx.send (title)
         user_inputs = soup.find(style='margin-bottom: 20px')
 
         text_chunk = soup.find(bgcolor='#d0d0d0')
@@ -81,8 +81,8 @@ class MadLibs(commands.Cog):
                 counter += 1
 
         for i in range(num_words):
-            string = string.replace("WORD", word_dict[i+1], 1)
-        
+            string = string.replace("WORD", (f"**{word_dict[i+1]}**"), 1)
+            
         await ctx.send(string)
 
 def setup(bot):
