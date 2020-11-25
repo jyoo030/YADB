@@ -150,6 +150,25 @@ class MusicPlayer(commands.Cog):
             print(f"The bot has connected to {user_vc}")
         return voice_client
 
+    @commands.command(name="volume", help="adjust the volume of the bot")
+    async def adjust_vol(self, ctx, volume):
+        try:
+            volume = float(volume)/100
+        except ValueError:
+            await ctx.send("send a number between 0 and 200 for volume!")
+            return
+
+        vc = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if volume < 0 or volume > 2.0:
+            await ctx.send("please send an value from 0-200")
+        elif not vc:
+            await ctx.send("can't adjust volume if nothing is playing")
+        else:
+            if isinstance(vc.source, discord.player.PCMVolumeTransformer):
+                vc.source.volume = volume
+            else:
+                vc.source = discord.PCMVolumeTransformer(vc.source, volume=volume)
+
 
 def setup(bot):
     bot.add_cog(MusicPlayer(bot))
