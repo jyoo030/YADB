@@ -5,6 +5,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 import random
 
+
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 GUILD = os.getenv("DISCORD_GUILD")
@@ -117,7 +118,10 @@ async def ows(ctx, *parameter):
                 await ctx.send("Haven't put anything into the story dumbass")
         else:
             print("Shouldn't ever get here but aight")
+
+    
 if __name__ == "__main__":
     bot.load_extension("cogs.music")
-
+    bot.load_extension("cogs.madlibs")
+    
 bot.run(TOKEN)
