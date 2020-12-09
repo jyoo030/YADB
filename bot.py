@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 import random
-
+from translate import Translator
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -119,7 +119,33 @@ async def ows(ctx, *parameter):
         else:
             print("Shouldn't ever get here but aight")
 
-    
+@bot.command(name='translator', help='Translates an inputed text into a chosen language')
+async def ows(ctx):
+    def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+    try:
+        await ctx.send("Text:")
+        reply = await bot.wait_for('message', check=check, timeout=30)
+        text = reply.content.lower()
+    except asyncio.TimeoutError:
+        await ctx.send("Sorry, you didn't respond in time. Please respond within 30 seconds!")
+    try:
+        await ctx.send("Text language:")
+        reply = await bot.wait_for('message', check=check, timeout=30)
+        text_language = reply.content.lower()
+    except asyncio.TimeoutError:
+        await ctx.send("Sorry, you didn't respond in time. Please respond within 30 seconds!")
+    try:
+        await ctx.send("Language to translate to:")
+        reply = await bot.wait_for('message', check=check, timeout=30)
+        language = reply.content.lower()
+    except asyncio.TimeoutError:
+        await ctx.send("Sorry, you didn't respond in time. Please respond within 30 seconds!")
+
+    translator= Translator(from_lang=f"{text_language}",to_lang=f"{language}")
+    translation = translator.translate(f"{text}")
+    await ctx.send(translation)
+
 if __name__ == "__main__":
     bot.load_extension("cogs.music")
     bot.load_extension("cogs.madlibs")
