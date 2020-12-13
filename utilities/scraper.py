@@ -96,10 +96,16 @@ class YoutubeDownloader():
 
     def __parse_json(self, search_results):
         # Grabs JSON of scraper data from HTML response without extra text
-        regex = r"\/\/ scraper_data_begin var ytInitialData = ([\S\s]*)\/\/ scraper_data_end"
+
+        # commented regex is from a different version of youtube resp data
+        # If they keep swapping it around I'll add a checker to grab the right one
+        # regex = r"\/\/ scraper_data_begin var ytInitialData = ([\S\s]*)\/\/ scraper_data_end"
+        regex = r"var ytInitialData = ([\S\s]*)(;)"
 
         filter_json = re.search(regex, search_results.text)
-        search_json = json.loads(filter_json.group(1)[:-2])
+        # Used in previous resp data
+        # search_json = json.loads(filter_json.group(1)[:-2])
+        search_json = json.loads(filter_json.group(1))
 
         # song_list_json is location in json of the list of search results
         song_list_json = search_json['contents']['twoColumnSearchResultsRenderer']['primaryContents']['sectionListRenderer']['contents'][0]['itemSectionRenderer']['contents']
@@ -116,4 +122,5 @@ class YoutubeDownloader():
 if __name__ == "__main__":
     # Testing
     yt = YoutubeDownloader()
-    yt.download("Short Song", os.getcwd())
+    song = yt.solo_search("Short Song", os.getcwd())
+    yt.download(song)
