@@ -40,6 +40,17 @@ async def on_guild_join(guild):
     await guild.create_voice_channel("League", category=voice_category)
     await guild.create_voice_channel("AFK", category=voice_category)
 
+
+
+@bot.event
+async def on_member_remove(member):
+    general = discord.utils.get(member.guild.channels, name="sayonara")
+    if member.nick == None:
+        await general.send(f"Goodbye, {member}")
+    else:
+        await general.send(f"Goodbye, {member}, also known as {member.nick}")
+
+
 @bot.command(name="coinflip", help="Randomly flips a coin for you")
 async def coin_flip(ctx):
     flip = random.randint(0, 2)
