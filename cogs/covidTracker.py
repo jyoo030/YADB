@@ -22,7 +22,6 @@ class CovidTracker(commands.Cog):
 
     @commands.command(name="covlist", help="Find list of searchable nations for Covid19 data")
     async def covlist (self, ctx):
-        print(csvDownloader().country_list())
         half_length = len(csvDownloader().country_list()) // 2
         await ctx.author.send(', '.join(csvDownloader().country_list()[:half_length]))
         await ctx.author.send(', '.join(csvDownloader().country_list()[-half_length:]))
