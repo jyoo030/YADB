@@ -13,7 +13,6 @@ from utilities.scraper import YoutubeDownloader
 class MusicPlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._queue = []
         self._loop = asyncio.get_event_loop()
         self._selection_reacts = ['1\N{combining enclosing keycap}', 
                             '2\N{combining enclosing keycap}', 
@@ -32,7 +31,7 @@ class MusicPlayer(commands.Cog):
         if not os.path.exists(self._SAVE_PATH):
             os.makedirs(self._SAVE_PATH)
 
-    @commands.command(name="play", help="plays a song from youtube",)
+    @commands.command(name="play", help="plays a song from youtube")
     async def instant_play(self, ctx, *, song_name):
         song_select = await self._loop.run_in_executor(None, YoutubeDownloader().solo_search, song_name, self._SAVE_PATH)
 
@@ -59,7 +58,7 @@ class MusicPlayer(commands.Cog):
             voice_client.volume = 100
             voice_client.is_playing()
         else:
-            self._queue.append(song)
+            self.bot.guild_list[ctx.guild.id]["queue"].append(song)
             await ctx.send(f"Queued {song.title}")
 
     def __play_next(self, ctx, old_song):
@@ -71,8 +70,8 @@ class MusicPlayer(commands.Cog):
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
         if not voice_client:
             return
-        elif len(self._queue) > 0:
-            song = self._queue.pop(0)
+        elif len(self.bot.guild_list[ctx.guild.id]["queue"]) > 0:
+            song = self.bot.guild_list[ctx.guild.id]["queue"].pop(0)
             voice_client.play(discord.FFmpegPCMAudio(song.mp3), after=lambda e: self.__play_next(ctx, song.mp3))
         else:
             asyncio.run_coroutine_threadsafe(voice_client.disconnect(), self._loop)
@@ -117,11 +116,11 @@ class MusicPlayer(commands.Cog):
 
     @commands.command(name="queue", help="displays music queue")
     async def show_queue(self, ctx):
-        if len(self._queue) == 0:
+        if len(self.bot.guild_list[ctx.guild.id]["queue"]) == 0:
             await ctx.send("the queue is currently empty. try adding a song with !play <song_name>")
         else: 
             output = "the current queue is: \n"
-            for index, song in enumerate(self._queue):
+            for index, song in enumerate(self.bot.guild_list[ctx.guild.id]["queue"]):
                 output += f"{index + 1}): {song.title}\n"
 
             await ctx.send(output)
