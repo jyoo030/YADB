@@ -57,6 +57,7 @@ class MusicPlayer(commands.Cog):
     async def __play_song(self, ctx, song):
         voice_client = await self.join_vc_bot(ctx)
         if not voice_client.is_playing():
+            self.bot.guild_list[ctx.guild.id]['curr_song'] = song
             await ctx.send(f"Now Playing: {song.title}")
             voice_client.play(discord.FFmpegPCMAudio(song.mp3), after=lambda e: self.__play_next(ctx, song.mp3))
             voice_client.volume = 100
@@ -76,6 +77,7 @@ class MusicPlayer(commands.Cog):
             return
         elif len(self.bot.guild_list[ctx.guild.id]["queue"]) > 0:
             song = self.bot.guild_list[ctx.guild.id]["queue"].pop(0)
+            self.bot.guild_list[ctx.guild.id]["curr_song"] = song
             voice_client.play(discord.FFmpegPCMAudio(song.mp3), after=lambda e: self.__play_next(ctx, song.mp3))
         else:
             asyncio.run_coroutine_threadsafe(voice_client.disconnect(), self._loop)
@@ -128,6 +130,14 @@ class MusicPlayer(commands.Cog):
                 output += f"{index + 1}): {song.title}\n"
 
             await ctx.send(output)
+    
+    @commands.command(name="song", help="displays currently playing song")
+    async def display_song(self, ctx):
+        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if voice_client and voice_client.is_connected():
+            await ctx.send(f"The currently playing song is: {self.bot.guild_list[ctx.guild.id]['curr_song'].title}")
+        else:
+            await ctx.send("There is no song currently playing.")
 
     @commands.command(name="leave", help="makes the bot leave your voice channel")
     async def leave_vc_bot(self, ctx):
