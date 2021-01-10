@@ -139,6 +139,17 @@ class MusicPlayer(commands.Cog):
         else:
             await ctx.send("There is no song currently playing.")
 
+    @commands.command(name="skip", help="Skips currently playing song")
+    async def skip_song(self, ctx):
+        if len(self.bot.guild_list[ctx.guild.id]['queue']) == 0:
+            await ctx.send("The queue is empty; No song to skip to. Use !leave to boot the bot from the voice channel")
+        else:
+            voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+            if voice_client and voice_client.is_connected():
+                #FIXME: Console gives deletion error but deletes file anyways. play_next called twice perhaps? or a race condition?
+                voice_client.stop()
+                self.__play_next(ctx, self.bot.guild_list[ctx.guild.id]['curr_song'].mp3)
+
     @commands.command(name="leave", help="makes the bot leave your voice channel")
     async def leave_vc_bot(self, ctx):
         for vc in self.bot.voice_clients:
