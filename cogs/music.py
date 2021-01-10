@@ -27,13 +27,17 @@ class MusicPlayer(commands.Cog):
         self.__set_save_path()
 
     def __set_save_path(self):
-        self._SAVE_PATH = os.path.join(os.getcwd(), "Music")
-        if not os.path.exists(self._SAVE_PATH):
-            os.makedirs(self._SAVE_PATH)
+        self._BASE_SAVE_PATH = os.path.join(os.getcwd(), "Music")
+        self.__path_exists(self._BASE_SAVE_PATH)
+    
+    def __path_exists(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+        return path
 
     @commands.command(name="play", help="plays a song from youtube")
     async def instant_play(self, ctx, *, song_name):
-        song_select = await self._loop.run_in_executor(None, YoutubeDownloader().solo_search, song_name, self._SAVE_PATH)
+        song_select = await self._loop.run_in_executor(None, YoutubeDownloader().solo_search, song_name, self.__path_exists(os.path.join(self._BASE_SAVE_PATH, str(ctx.guild.id))))
 
         try:
             song = await self._loop.run_in_executor(None, YoutubeDownloader().download, song_select)
@@ -80,7 +84,7 @@ class MusicPlayer(commands.Cog):
     async def search_play(self, ctx, *, song_name):
         def __search_reply_valid(reaction, user):
             return user == ctx.author and reaction.emoji in self._selection_reacts
-        results = await self._loop.run_in_executor(None, YoutubeDownloader().multi_search, song_name, self._SAVE_PATH)
+        results = await self._loop.run_in_executor(None, YoutubeDownloader().multi_search, song_name, self.__path_exists(os.path.join(self._BASE_SAVE_PATH, str(ctx.guild.id))))
 
         output = f"Search Results for: {song_name}\n"
         for index, result in enumerate(results):
