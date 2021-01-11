@@ -13,7 +13,6 @@ from utilities.scraper import YoutubeDownloader
 class MusicPlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._queue = []
         self._loop = asyncio.get_event_loop()
         self._selection_reacts = ['1\N{combining enclosing keycap}', 
                             '2\N{combining enclosing keycap}', 
@@ -28,13 +27,17 @@ class MusicPlayer(commands.Cog):
         self.__set_save_path()
 
     def __set_save_path(self):
-        self._SAVE_PATH = os.path.join(os.getcwd(), "Music")
-        if not os.path.exists(self._SAVE_PATH):
-            os.makedirs(self._SAVE_PATH)
+        self._BASE_SAVE_PATH = os.path.join(os.getcwd(), "Music")
+        self.__path_exists(self._BASE_SAVE_PATH)
+    
+    def __path_exists(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+        return path
 
-    @commands.command(name="play", help="plays a song from youtube",)
+    @commands.command(name="play", help="plays a song from youtube")
     async def instant_play(self, ctx, *, song_name):
-        song_select = await self._loop.run_in_executor(None, YoutubeDownloader().solo_search, song_name, self._SAVE_PATH)
+        song_select = await self._loop.run_in_executor(None, YoutubeDownloader().solo_search, song_name, self.__path_exists(os.path.join(self._BASE_SAVE_PATH, str(ctx.guild.id))))
 
         try:
             song = await self._loop.run_in_executor(None, YoutubeDownloader().download, song_select)
@@ -54,12 +57,13 @@ class MusicPlayer(commands.Cog):
     async def __play_song(self, ctx, song):
         voice_client = await self.join_vc_bot(ctx)
         if not voice_client.is_playing():
+            self.bot.guild_list[ctx.guild.id]['curr_song'] = song
             await ctx.send(f"Now Playing: {song.title}")
             voice_client.play(discord.FFmpegPCMAudio(song.mp3), after=lambda e: self.__play_next(ctx, song.mp3))
             voice_client.volume = 100
             voice_client.is_playing()
         else:
-            self._queue.append(song)
+            self.bot.guild_list[ctx.guild.id]["queue"].append(song)
             await ctx.send(f"Queued {song.title}")
 
     def __play_next(self, ctx, old_song):
@@ -71,8 +75,9 @@ class MusicPlayer(commands.Cog):
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
         if not voice_client:
             return
-        elif len(self._queue) > 0:
-            song = self._queue.pop(0)
+        elif len(self.bot.guild_list[ctx.guild.id]["queue"]) > 0:
+            song = self.bot.guild_list[ctx.guild.id]["queue"].pop(0)
+            self.bot.guild_list[ctx.guild.id]["curr_song"] = song
             voice_client.play(discord.FFmpegPCMAudio(song.mp3), after=lambda e: self.__play_next(ctx, song.mp3))
         else:
             asyncio.run_coroutine_threadsafe(voice_client.disconnect(), self._loop)
@@ -81,7 +86,7 @@ class MusicPlayer(commands.Cog):
     async def search_play(self, ctx, *, song_name):
         def __search_reply_valid(reaction, user):
             return user == ctx.author and reaction.emoji in self._selection_reacts
-        results = await self._loop.run_in_executor(None, YoutubeDownloader().multi_search, song_name, self._SAVE_PATH)
+        results = await self._loop.run_in_executor(None, YoutubeDownloader().multi_search, song_name, self.__path_exists(os.path.join(self._BASE_SAVE_PATH, str(ctx.guild.id))))
 
         output = f"Search Results for: {song_name}\n"
         for index, result in enumerate(results):
@@ -117,14 +122,33 @@ class MusicPlayer(commands.Cog):
 
     @commands.command(name="queue", help="displays music queue")
     async def show_queue(self, ctx):
-        if len(self._queue) == 0:
+        if len(self.bot.guild_list[ctx.guild.id]["queue"]) == 0:
             await ctx.send("the queue is currently empty. try adding a song with !play <song_name>")
         else: 
             output = "the current queue is: \n"
-            for index, song in enumerate(self._queue):
+            for index, song in enumerate(self.bot.guild_list[ctx.guild.id]["queue"]):
                 output += f"{index + 1}): {song.title}\n"
 
             await ctx.send(output)
+    
+    @commands.command(name="song", help="displays currently playing song")
+    async def display_song(self, ctx):
+        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if voice_client and voice_client.is_connected():
+            await ctx.send(f"The currently playing song is: {self.bot.guild_list[ctx.guild.id]['curr_song'].title}")
+        else:
+            await ctx.send("There is no song currently playing.")
+
+    @commands.command(name="skip", help="Skips currently playing song")
+    async def skip_song(self, ctx):
+        if len(self.bot.guild_list[ctx.guild.id]['queue']) == 0:
+            await ctx.send("The queue is empty; No song to skip to. Use !leave to boot the bot from the voice channel")
+        else:
+            voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+            if voice_client and voice_client.is_connected():
+                #FIXME: Console gives deletion error but deletes file anyways. play_next called twice perhaps? or a race condition?
+                voice_client.stop()
+                self.__play_next(ctx, self.bot.guild_list[ctx.guild.id]['curr_song'].mp3)
 
     @commands.command(name="leave", help="makes the bot leave your voice channel")
     async def leave_vc_bot(self, ctx):

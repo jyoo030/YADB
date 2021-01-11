@@ -13,12 +13,20 @@ GUILD = os.getenv("DISCORD_GUILD")
 intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+bot.guild_list = {}
 
 @bot.event
 async def on_ready():
     print(
         f"Logged in as:\n\tUser: {bot.user.name}\n\tID: {bot.user.id}\n\tVersion: {discord.__version__}\n"
     )
+    for guild in bot.guilds:
+        add_to_guilds(guild.id)
+    
+def add_to_guilds(guild_id):
+    bot.guild_list.setdefault(guild_id, {})
+    bot.guild_list[guild_id].setdefault("queue", [])
+    bot.guild_list[guild_id].setdefault("curr_song", "")
 
 @bot.event
 async def on_member_join(member):
@@ -26,21 +34,7 @@ async def on_member_join(member):
 
 @bot.event
 async def on_guild_join(guild):
-    for category in guild.categories:
-        if category.name == "Text Channels":
-            text_category = category
-        elif category.name == "Voice Channels":
-            voice_category = category
-        else:
-            print("Welp. Ur dumb.")
-
-    await guild.create_text_channel("among-us", category=text_category)
-    await guild.create_text_channel("memes", category=text_category)
-    await guild.create_voice_channel("Among Us", category=voice_category)
-    await guild.create_voice_channel("League", category=voice_category)
-    await guild.create_voice_channel("AFK", category=voice_category)
-
-
+    add_to_guilds(guild.id)
 
 @bot.event
 async def on_member_remove(member):
@@ -49,7 +43,6 @@ async def on_member_remove(member):
         await general.send(f"Goodbye, {member}")
     else:
         await general.send(f"Goodbye, {member}, also known as {member.nick}")
-
 
 @bot.command(name="coinflip", help="Randomly flips a coin for you")
 async def coin_flip(ctx):
