@@ -67,10 +67,7 @@ class MusicPlayer(commands.Cog):
             await ctx.send(f"Queued {song.title}")
 
     def __play_next(self, ctx, old_song):
-        if os.path.exists(old_song):
-            os.remove(old_song)
-        else:
-            print(f"Error deleting recently played song {old_song}")
+        self.__song_cleanup(old_song)
 
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
         if not voice_client:
@@ -146,9 +143,8 @@ class MusicPlayer(commands.Cog):
         else:
             voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
             if voice_client and voice_client.is_connected():
-                #FIXME: Console gives deletion error but deletes file anyways. play_next called twice perhaps? or a race condition?
+                #Stops current song from playing and triggers self.play_next
                 voice_client.stop()
-                self.__play_next(ctx, self.bot.guild_list[ctx.guild.id]['curr_song'].mp3)
 
     @commands.command(name="leave", help="makes the bot leave your voice channel")
     async def leave_vc_bot(self, ctx):
@@ -193,6 +189,38 @@ class MusicPlayer(commands.Cog):
             else:
                 vc.source = discord.PCMVolumeTransformer(vc.source, volume=volume)
 
+    @commands.command(name="pause", help="Pauses music player")
+    async def pause(self, ctx):
+        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if voice_client and voice_client.is_connected() and not voice_client.is_paused():
+            voice_client.pause()
+        else:
+            await ctx.send("Music Player already isn't playing.")
 
+    @commands.command(name="resume", help="Resumes paused playback")
+    async def resume(self, ctx):
+        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if voice_client and voice_client.is_connected() and voice_client.is_paused():
+            voice_client.resume()
+        else:
+            await ctx.send("Can't resume what hasn't been paused.")
+    
+    @commands.command(name="remove", help="Removes x position song from the queue")
+    async def remove(self, ctx, song_pos):
+        song_pos = int(song_pos)
+        if len(self.bot.guild_list[ctx.guild.id]['queue']) == 0:
+            await ctx.send("The queue is already empty. There is nothing to remove.")
+        elif song_pos > len(self.bot.guild_list[ctx.guild.id]['queue']) or (song_pos < 1):
+            await ctx.send("Invalid song position. Please try again.")
+        else:
+            song = self.bot.guild_list[ctx.guild.id]['queue'].pop(song_pos-1)
+            self.__song_cleanup(song.mp3)
+    
+    def __song_cleanup(self, song_mp3_title):
+        if os.path.exists(song_mp3_title):
+            os.remove(song_mp3_title)
+        else:
+            print(f"Error deleting {song_mp3_title}")
+        
 def setup(bot):
     bot.add_cog(MusicPlayer(bot))
