@@ -38,12 +38,7 @@ class MusicPlayer(commands.Cog):
     @commands.command(name="play", help="plays a song from youtube")
     async def instant_play(self, ctx, *, song_name):
         song_select = await self._loop.run_in_executor(None, YoutubeDownloader().solo_search, song_name, self.__path_exists(os.path.join(self._BASE_SAVE_PATH, str(ctx.guild.id))))
-
-        try:
-            song = await self._loop.run_in_executor(None, YoutubeDownloader().download, song_select)
-        except Exception as err:
-            await ctx.send("the music player is still in alpha and crashes sometimes, please try again.")
-            raise err
+        song = await self._loop.run_in_executor(None, YoutubeDownloader().download, song_select)
 
         await self.__play_song(ctx, song)
     
@@ -51,6 +46,8 @@ class MusicPlayer(commands.Cog):
     async def instant_play_error(self, ctx, error):
         if isinstance(error, discord.ext.commands.errors.MissingRequiredArgument):
             await ctx.send("You need to put a song name dummy!")
+        elif isinstance(error, discord.ext.commands.errors.CommandInvokeError):
+            await ctx.send("Sorry, the song already exists in the queue.")
         else:
             print(error)
 
@@ -60,7 +57,6 @@ class MusicPlayer(commands.Cog):
             self.bot.guild_list[ctx.guild.id]['curr_song'] = song
             await ctx.send(f"Now Playing: {song.title}")
             voice_client.play(discord.FFmpegPCMAudio(song.mp3), after=lambda e: self.__play_next(ctx, song.mp3))
-            voice_client.volume = 100
             voice_client.is_playing()
         else:
             self.bot.guild_list[ctx.guild.id]["queue"].append(song)

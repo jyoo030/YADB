@@ -8,6 +8,10 @@ import ffmpeg
 import os
 # Currently only supports downloading the first video from a search query
 
+class SongAlreadyExists(Exception):
+    # Raised when trying to download a song that already exists
+    pass
+
 class SongInfo():
     #region properties
     @property
@@ -49,6 +53,9 @@ class YoutubeDownloader():
 
     def download(self, song):
         #TODO: Add support for direct URL's
+
+        if os.path.exists(song.mp3):
+            raise SongAlreadyExists
 
         YouTube(song.url).streams.first().download(output_path=song.output_path)
         ffmpeg.input(song.mp4).output(song.mp3).run()
