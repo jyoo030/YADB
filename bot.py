@@ -116,5 +116,6 @@ async def ows(ctx, *parameter):
 if __name__ == "__main__":
     bot.load_extension("cogs.music")
     bot.load_extension("cogs.madlibs")
+    bot.load_extension("cogs.twitter")
     
 bot.run(TOKEN)
