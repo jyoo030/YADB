@@ -13,7 +13,7 @@ load_dotenv()
 
 # Authenticate to Twitter
 auth = tweepy.OAuthHandler(os.getenv("TWITTER_CONSUMER"), os.getenv("TWITTER_CONSUMER_SECRET"))
-auth.set_access_token("TWITTER_ACCESS", "TWITTER_ACCESS_SECRET")
+auth.set_access_token(os.getenv("TWITTER_ACCESS"), os.getenv("TWITTER_ACCESS_SECRET"))
 api = tweepy.API(auth)
 if (api.verify_credentials() == False):
     print("Credential failure :'(")
@@ -23,25 +23,43 @@ class Twitter(commands.Cog):
         self.bot = bot
         self._loop = asyncio.get_event_loop()
         self.followers = Followers()
+        self.follow_list = []
+        self.seen_follow_list = set()
         
-    @commands.command(name="get_recent", help="Get's the most recent tweet from someones twitter")
-    async def get_recent(self, ctx):
-        tweets = api.user_timeline(screen_name="TestYadb", count=1)
-        await ctx.send(f":bird: User {tweets[0].user.screen_name}'s most recent tweet is:\n {tweets[0].text}")
-    
     @commands.Cog.listener()
     async def on_ready(self):
         stream_listener = MyStreamListener(send_msg=self.tweet_to_discord, loop=self._loop)
         self.myStream = tweepy.Stream(auth=api.auth, listener=stream_listener)
-        self.myStream.filter(follow=["1370481755640135680"], is_async=True)
+
+    @commands.command(name="follow", help="follow @handle will give live updates of tweets")
+    async def follow(self, ctx, *, handle):
+        try:
+            user = api.get_user(screen_name=handle)
+        except tweepy.TweepError as tweep:
+            if tweep.api_code == 50:
+                await ctx.send("User not found. Please make sure they're public and spelled properly")
+            else:
+                await ctx.send("Unknown error. Please contact dev to report error.")
+            return
+
+        if user.id_str not in self.seen_follow_list:
+            self.seen_follow_list.add(user.id_str)
+            self.follow_list.append(user.id_str)
+        else:
+            await ctx.send("User already being followed")
+            return
+
+        if self.myStream.running is True:
+            self.myStream.disconnect()
+        self.myStream.filter(follow=self.follow_list, is_async=True)
+
+        await ctx.send(f"user @{user.screen_name} is now being followed.")
     
     async def tweet_to_discord(self, message):
-        # guild = await self.bot.get_guild("766003288456953896")
-        # print(guild)
-        screen_name = message.user.screen_name
-        message_url = f"http://twitter.com/{screen_name}/status/{message.id}"
-        general = discord.utils.get(self.bot.guilds[0].channels, name="justins-bot-lab")
-        await general.send(message_url)
+        if not message.in_reply_to_status_id and not message.in_reply_to_user_id and not message.in_reply_to_screen_name:
+            message_url = f"http://twitter.com/{message.user.screen_name}/status/{message.id}"
+            general = discord.utils.get(self.bot.guilds[0].channels, name="justins-bot-lab")
+            await general.send(message_url)
 
 
 class MyStreamListener(tweepy.StreamListener):
