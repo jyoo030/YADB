@@ -53,7 +53,7 @@ class Twitter(commands.Cog):
             self.myStream.disconnect()
         self.myStream.filter(follow=self.follow_list, is_async=True)
 
-        await ctx.send(f"user @{user.screen_name} is now being followed.")
+        await ctx.send(f"user @{user.screen_name} is now being followed :bird:")
     
     async def tweet_to_discord(self, message):
         if not message.in_reply_to_status_id and not message.in_reply_to_user_id and not message.in_reply_to_screen_name:
@@ -70,10 +70,7 @@ class MyStreamListener(tweepy.StreamListener):
         print("Listener booted up")
 
     def on_status(self, status):
-        self.send_message(status)
-    
-    def send_message(self, msg):
-        future = asyncio.run_coroutine_threadsafe(self.send_msg_discord(msg), self.loop)
+        future = asyncio.run_coroutine_threadsafe(self.send_msg_discord(status), self.loop)
         future.result()
 
     def on_error(self, status_code):
@@ -81,6 +78,7 @@ class MyStreamListener(tweepy.StreamListener):
         if status_code == 420:
             print("Hit Error 420")
             return False
+
 
 class Followers():
     def __init__(self):
