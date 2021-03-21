@@ -6,6 +6,8 @@ from discord.ext import commands
 from discord.utils import get
 from discord import FFmpegPCMAudio
 from dotenv import load_dotenv
+from datetime import datetime
+from pytz import timezone
 
 import tweepy
 
@@ -59,6 +61,13 @@ class Twitter(commands.Cog):
         if not message.in_reply_to_status_id and not message.in_reply_to_user_id and not message.in_reply_to_screen_name:
             message_url = f"http://twitter.com/{message.user.screen_name}/status/{message.id}"
             general = discord.utils.get(self.bot.guilds[0].channels, name="justins-bot-lab")
+            # formatted_time = timezone('US/Pacific').localize(message.created_at)
+            # formatted_time = formatted_time.strftime("%B %d %Y %I:%M %p")
+
+            formatted_time = datetime.now(timezone('US/Pacific')).strftime("%B %d %Y %I:%M %p")
+
+
+            await general.send(formatted_time)
             await general.send(message_url)
 
 
