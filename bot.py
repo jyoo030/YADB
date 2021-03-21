@@ -26,6 +26,7 @@ def add_to_guilds(guild_id):
     bot.guild_list.setdefault(guild_id, {})
     bot.guild_list[guild_id].setdefault("queue", [])
     bot.guild_list[guild_id].setdefault("curr_song", "")
+    bot.guild_list[guild_id].setdefault("twitter", set())
 
 @bot.event
 async def on_member_join(member):

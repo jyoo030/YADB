@@ -9,12 +9,8 @@ from discord import FFmpegPCMAudio
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utilities.scraper import YoutubeDownloader
 
-
-class MusicPlayer(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
-        self._loop = asyncio.get_event_loop()
-        self._selection_reacts = ['1\N{combining enclosing keycap}', 
+# a list of 1-10 emojis that a user in discord can select to choose their song
+SELECTION_REACTS=['1\N{combining enclosing keycap}', 
                             '2\N{combining enclosing keycap}', 
                             '3\N{combining enclosing keycap}', 
                             '4\N{combining enclosing keycap}', 
@@ -24,6 +20,11 @@ class MusicPlayer(commands.Cog):
                             '8\N{combining enclosing keycap}', 
                             '9\N{combining enclosing keycap}', 
                             '\N{Keycap Ten}']
+
+class MusicPlayer(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self._loop = asyncio.get_event_loop()
         self.__set_save_path()
 
     def __set_save_path(self):
@@ -78,7 +79,7 @@ class MusicPlayer(commands.Cog):
     @commands.command(name="search", help="display and choose song from search")
     async def search_play(self, ctx, *, song_name):
         def __search_reply_valid(reaction, user):
-            return user == ctx.author and reaction.emoji in self._selection_reacts
+            return user == ctx.author and reaction.emoji in SELECTION_REACTS
         results = await self._loop.run_in_executor(None, YoutubeDownloader().multi_search, song_name, self.__path_exists(os.path.join(self._BASE_SAVE_PATH, str(ctx.guild.id))))
 
         output = f"Search Results for: {song_name}\n"
@@ -90,14 +91,14 @@ class MusicPlayer(commands.Cog):
         result_msg = await ctx.send(output)
 
         for i in range(len(results)):
-            await result_msg.add_reaction(self._selection_reacts[i])
+            await result_msg.add_reaction(SELECTION_REACTS[i])
         
         try:
             reaction, _ = await self.bot.wait_for('reaction_add', timeout=15.0, check=__search_reply_valid)
         except asyncio.TimeoutError:
             await ctx.send("You haven't made a valid selection for 15 seconds, or selected too early, so the search has been cancelled.")
 
-        song_select = results[self._selection_reacts.index(reaction.emoji)]
+        song_select = results[SELECTION_REACTS.index(reaction.emoji)]
         try:
             song = await self._loop.run_in_executor(None, YoutubeDownloader().download, song_select)
         except Exception as err:
