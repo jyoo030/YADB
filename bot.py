@@ -112,9 +112,10 @@ async def ows(ctx, *parameter):
         else:
             print("Shouldn't ever get here but aight")
 
-    
+
 if __name__ == "__main__":
     bot.load_extension("cogs.music")
     bot.load_extension("cogs.madlibs")
+    bot.load_extension("cogs.covid_tracker")
     
 bot.run(TOKEN)
