@@ -12,24 +12,20 @@ import tweepy
 load_dotenv()
 
 # Authenticate to Twitter
-auth = tweepy.OAuthHandler(os.getenv("TWITTER_CONSUMER"), os.getenv("TWITTER_CONSUMER_SECRET"))
-auth.set_access_token(os.getenv("TWITTER_ACCESS"), os.getenv("TWITTER_ACCESS_SECRET"))
+AUTH = tweepy.OAuthHandler(os.getenv("TWITTER_CONSUMER"), os.getenv("TWITTER_CONSUMER_SECRET"))
+AUTH.set_access_token(os.getenv("TWITTER_ACCESS"), os.getenv("TWITTER_ACCESS_SECRET"))
 
 
 class Twitter(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._loop = asyncio.get_event_loop()
-        self.authenticate()
-
-    def authenticate(self):
-        self.api = tweepy.API(auth)
+        self.api = tweepy.API(AUTH)
         if not self.api.verify_credentials():
             print("Failed to Authenticate Credentials for Twitter API :(")
 
     @commands.Cog.listener()
     async def on_ready(self):
-        self.listener = TwitterListener(tweet_to_discord=self.tweet_to_discord, loop=self._loop)
+        self.listener = TwitterListener(tweet_to_discord=self.tweet_to_discord, loop=asyncio.get_event_loop())
         self.tweet_stream = None
 
     @commands.command(name="follow", help="follow @handle will give live updates of tweets")
@@ -56,10 +52,10 @@ class Twitter(commands.Cog):
 
         if self.tweet_stream:
             self.tweet_stream.disconnect()
+        # tweepy is dumb and doesn't actually disconnect on demand until a new tweet sends
         self.tweet_stream = tweepy.Stream(auth=self.api.auth, listener=self.listener)
 
-        # all_follows = set().union(*(guild_data['twitter'] for guild_data in self.bot.guild_list.values()))
-        self.tweet_stream.filter(follow=[*twitter_follows.keys()], is_async=True)
+        self.tweet_stream.filter(follow=list(twitter_follows.keys()), is_async=True)
         await ctx.send(f"user @{user.screen_name} is now being followed :bird:")
 
     async def tweet_to_discord(self, message):
