@@ -30,7 +30,7 @@ class Twitter(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         self.listener = TwitterListener(tweet_to_discord=self.tweet_to_discord, loop=self._loop)
-        self.tweet_stream = tweepy.Stream(auth=self.api.auth, listener=self.listener)
+        self.tweet_stream = None
 
     @commands.command(name="follow", help="follow @handle will give live updates of tweets")
     async def follow(self, ctx, *, handle):
@@ -48,17 +48,15 @@ class Twitter(commands.Cog):
             return
 
         twitter_follows = self.bot.guild_list['twitter']
-        if user.id_str in twitter_follows and ctx.guild.id in self.bot.guild_list['twitter'][user.id_str]:
+        if user.id_str in twitter_follows and ctx.guild.id in twitter_follows[user.id_str]:
             await ctx.send(f"User @{user.screen_name} already being followed")
             return
 
-        twitter_follows.setdefault(user.id_str, [])
-        twitter_follows[user.id_str].append(str(ctx.guild.id))
+        twitter_follows[user.id_str].add(ctx.guild.id)
 
-        if self.tweet_stream.running:
+        if self.tweet_stream:
             self.tweet_stream.disconnect()
-            del self.tweet_stream
-            self.tweet_stream = tweepy.Stream(auth=self.api.auth, listener=self.listener)
+        self.tweet_stream = tweepy.Stream(auth=self.api.auth, listener=self.listener)
 
         # all_follows = set().union(*(guild_data['twitter'] for guild_data in self.bot.guild_list.values()))
         self.tweet_stream.filter(follow=[*twitter_follows.keys()], is_async=True)

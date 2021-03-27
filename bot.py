@@ -4,6 +4,7 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 import random
+from collections import defaultdict
 
 
 load_dotenv()
@@ -13,7 +14,7 @@ intents = discord.Intents.default()
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 bot.guild_list = {}
-bot.guild_list["twitter"] = {}
+bot.guild_list["twitter"] = defaultdict(set)
 
 @bot.event
 async def on_ready():
@@ -27,7 +28,6 @@ def add_to_guilds(guild_id):
     bot.guild_list.setdefault(guild_id, {})
     bot.guild_list[guild_id].setdefault("queue", [])
     bot.guild_list[guild_id].setdefault("curr_song", "")
-    bot.guild_list[guild_id].setdefault("twitter", set())
 
 # @bot.event
 # async def on_member_join(member):
