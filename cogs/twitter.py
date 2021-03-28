@@ -4,22 +4,19 @@ import asyncio
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-from datetime import datetime
 import pytz
 
 import tweepy
-
-load_dotenv()
-
-# Authenticate to Twitter
-AUTH = tweepy.OAuthHandler(os.getenv("TWITTER_CONSUMER"), os.getenv("TWITTER_CONSUMER_SECRET"))
-AUTH.set_access_token(os.getenv("TWITTER_ACCESS"), os.getenv("TWITTER_ACCESS_SECRET"))
 
 
 class Twitter(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.api = tweepy.API(AUTH)
+        load_dotenv()
+        # Authenticate to Twitter
+        auth = tweepy.OAuthHandler(os.getenv("TWITTER_CONSUMER"), os.getenv("TWITTER_CONSUMER_SECRET"))
+        auth.set_access_token(os.getenv("TWITTER_ACCESS"), os.getenv("TWITTER_ACCESS_SECRET"))
+        self.api = tweepy.API(auth)
         if not self.api.verify_credentials():
             print("Failed to Authenticate Credentials for Twitter API :(")
 
@@ -37,13 +34,15 @@ class Twitter(commands.Cog):
 
         user = await self.get_user(handle, ctx)
         if user:
-            if user.id_str in self.twitter_follows and ctx.guild.id in self.twitter_follows[user.id_str]:
+            if user.id_str not in self.twitter_follows:
+                self.twitter_follows[user.id_str]
+                self.refresh_stream()
+
+            if ctx.guild.id in self.twitter_follows[user.id_str]:
                 await ctx.send(f"User @{user.screen_name} already being followed")
                 return
 
             self.twitter_follows[user.id_str].add(ctx.guild.id)
-
-            await self.refresh_stream()
             await ctx.send(f"user @{user.screen_name} is now being followed :bird:")
 
     @commands.command(name="unfollow", help="unfollows @handle")
@@ -56,11 +55,11 @@ class Twitter(commands.Cog):
                 self.twitter_follows[user.id_str].remove(ctx.guild.id)
                 if not self.twitter_follows[user.id_str]:
                     del self.twitter_follows[user.id_str]
+                    self.refresh_stream()
 
-                await self.refresh_stream()
                 await ctx.send(f"User @{handle} is no longer being followed.")
 
-    async def refresh_stream(self):
+    def refresh_stream(self):
         if self.tweet_stream:
             self.tweet_stream.disconnect()
 
@@ -71,14 +70,13 @@ class Twitter(commands.Cog):
 
     async def get_user(self, handle, ctx):
         try:
-            user = self.api.get_user(screen_name=handle)
-            return user
+            return self.api.get_user(screen_name=handle)
         except tweepy.TweepError as tweep:
             if tweep.api_code == 50:
                 await ctx.send("User not found. Please make sure they're public and spelled properly")
             else:
                 await ctx.send(f"Unknown error. Please contact dev with error code: {tweep.api_code}.")
-            return False
+            return None
 
     async def tweet_to_discord(self, message):
         if not message.in_reply_to_status_id and not message.in_reply_to_user_id and not message.in_reply_to_screen_name:
