@@ -61,6 +61,7 @@ if __name__ == "__main__":
     bot.load_extension("cogs.music")
     bot.load_extension("cogs.madlibs")
     bot.load_extension("cogs.games")
+    bot.load_extension("cogs.covid_tracker")
 
     load_dotenv()
     token = os.getenv("DISCORD_TOKEN")
