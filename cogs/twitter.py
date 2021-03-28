@@ -25,6 +25,7 @@ class Twitter(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        self.twitter_follows = self.bot.guild_list["twitter"]
         self.listener = TwitterListener(tweet_to_discord=self.tweet_to_discord, loop=asyncio.get_event_loop())
         self.tweet_stream = None
 
@@ -34,35 +35,56 @@ class Twitter(commands.Cog):
             category = discord.utils.get(ctx.guild.categories, name="Text Channels")
             await ctx.guild.create_text_channel("twitter", category=category, position=len(category.channels))
 
+        user = await self.get_user(handle, ctx)
+        if user:
+            if user.id_str in self.twitter_follows and ctx.guild.id in self.twitter_follows[user.id_str]:
+                await ctx.send(f"User @{user.screen_name} already being followed")
+                return
+
+            self.twitter_follows[user.id_str].add(ctx.guild.id)
+
+            await self.refresh_stream()
+            await ctx.send(f"user @{user.screen_name} is now being followed :bird:")
+
+    @commands.command(name="unfollow", help="unfollows @handle")
+    async def unfollow(self, ctx, *, handle):
+        user = await self.get_user(handle, ctx)
+        if user:
+            if user.id_str not in self.twitter_follows or ctx.guild.id not in self.twitter_follows[user.id_str]:
+                await ctx.send(f"User @{handle} isn't being followed.")
+            else:
+                self.twitter_follows[user.id_str].remove(ctx.guild.id)
+                if not self.twitter_follows[user.id_str]:
+                    del self.twitter_follows[user.id_str]
+
+                await self.refresh_stream()
+                await ctx.send(f"User @{handle} is no longer being followed.")
+
+    async def refresh_stream(self):
+        if self.tweet_stream:
+            self.tweet_stream.disconnect()
+
+        # tweepy is dumb and doesn't actually disconnect on demand until a new tweet sends
+        if self.twitter_follows:
+            self.tweet_stream = tweepy.Stream(auth=self.api.auth, listener=self.listener)
+            self.tweet_stream.filter(follow=list(self.twitter_follows.keys()), is_async=True)
+
+    async def get_user(self, handle, ctx):
         try:
             user = self.api.get_user(screen_name=handle)
+            return user
         except tweepy.TweepError as tweep:
             if tweep.api_code == 50:
                 await ctx.send("User not found. Please make sure they're public and spelled properly")
             else:
                 await ctx.send(f"Unknown error. Please contact dev with error code: {tweep.api_code}.")
-            return
-
-        twitter_follows = self.bot.guild_list['twitter']
-        if user.id_str in twitter_follows and ctx.guild.id in twitter_follows[user.id_str]:
-            await ctx.send(f"User @{user.screen_name} already being followed")
-            return
-
-        twitter_follows[user.id_str].add(ctx.guild.id)
-
-        if self.tweet_stream:
-            self.tweet_stream.disconnect()
-        # tweepy is dumb and doesn't actually disconnect on demand until a new tweet sends
-        self.tweet_stream = tweepy.Stream(auth=self.api.auth, listener=self.listener)
-
-        self.tweet_stream.filter(follow=list(twitter_follows.keys()), is_async=True)
-        await ctx.send(f"user @{user.screen_name} is now being followed :bird:")
+            return False
 
     async def tweet_to_discord(self, message):
         if not message.in_reply_to_status_id and not message.in_reply_to_user_id and not message.in_reply_to_screen_name:
             message_url = f"http://twitter.com/{message.user.screen_name}/status/{message.id}"
 
-            creation_date_pst = message.created_at.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('US/Pacific'))
+            creation_date_pst = message.created_at.replace(tzinfo=pytz.utc).astimezone(pytz.timezone("US/Pacific"))
             formatted_time = creation_date_pst.strftime("%B %d %Y %I:%M %p")
 
             # get all servers currently following this twitter user
