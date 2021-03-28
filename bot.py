@@ -56,7 +56,9 @@ class DefaultBotHandler(commands.Cog):
 
 
 if __name__ == "__main__":
-    bot = commands.Bot(command_prefix="!", intents=discord.Intents(presences=False))
+    intents = discord.Intents.default()
+    intents.members = True
+    bot = commands.Bot(command_prefix="!", intents=intents)
     bot.add_cog(DefaultBotHandler(bot))
     bot.load_extension("cogs.music")
     bot.load_extension("cogs.madlibs")
