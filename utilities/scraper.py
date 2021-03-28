@@ -1,23 +1,23 @@
 from requests_html import HTMLSession
 import re
 import json
-from pprint import pprint
-import shutil
 from pytube import YouTube
 import ffmpeg
 import os
 # Currently only supports downloading the first video from a search query
 
+
 class SongAlreadyExists(Exception):
     # Raised when trying to download a song that already exists
     pass
 
+
 class SongInfo():
-    #region properties
+    # region properties
     @property
     def title(self):
         return self._title
-    
+
     @property
     def url(self):
         return self._url
@@ -33,11 +33,11 @@ class SongInfo():
     @property
     def mp3(self):
         return self._mp3
-    
+
     @property
     def output_path(self):
         return self._output_path
-    #endregion
+    # endregion
 
     def __init__(self, title, url, output_path):
         self._title = title
@@ -47,12 +47,13 @@ class SongInfo():
         self._mp3 = os.path.join(f"{output_path}", f"{self._cleaned_title}.mp3")
         self._output_path = output_path
 
+
 class YoutubeDownloader():
     def __init__(self):
         pass
 
     def download(self, song):
-        #TODO: Add support for direct URL's
+        # TODO: Add support for direct URL's
 
         if os.path.exists(song.mp3):
             raise SongAlreadyExists
@@ -74,12 +75,12 @@ class YoutubeDownloader():
 
         for i in range(result_length):
             song_results.append(SongInfo(
-                    json_results[i]['videoRenderer']['title']['runs'][0]['text'],
-                    json_results[i]['videoRenderer']['navigationEndpoint']['commandMetadata']['webCommandMetadata']['url'],
-                    output_path))
-        
+                                json_results[i]['videoRenderer']['title']['runs'][0]['text'],
+                                json_results[i]['videoRenderer']['navigationEndpoint']['commandMetadata']['webCommandMetadata']['url'],
+                                output_path))
+
         return song_results
-    
+
     def solo_search(self, query, output_path):
         json_results = self.__get_search(query)
 
@@ -89,7 +90,7 @@ class YoutubeDownloader():
             output_path)
 
         return song
-    
+
     def __get_search(self, query):
         formatted_query = '+'.join(query.split())
         url = f'https://www.youtube.com/results?search_query={formatted_query}'

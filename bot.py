@@ -50,6 +50,7 @@ class DefaultBotHandler(commands.Cog):
         elif isinstance(error, commands.BadArgument):
             await ctx.send(f"Seems we were passed the wrong type for a parameter: {str(error).lower()}\n{command_usage}")
         else:
+            print("Shouldn't ever get here but aight")
             await ctx.send(f"Seems the command has failed.\n{command_usage}")
             # print the unexpected exception for developer reference
             traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
@@ -64,6 +65,7 @@ if __name__ == "__main__":
     bot.load_extension("cogs.madlibs")
     bot.load_extension("cogs.games")
     bot.load_extension("cogs.covid_tracker")
+    bot.load_extension("cogs.twitter")
 
     load_dotenv()
     token = os.getenv("DISCORD_TOKEN")
