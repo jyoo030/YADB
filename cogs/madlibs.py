@@ -1,89 +1,66 @@
-import os, sys
 import asyncio
+from random import randrange
 
+import aiohttp
 import discord
+from bs4 import BeautifulSoup
 from discord.ext import commands
 from discord.utils import get
 
-from requests_html import HTMLSession
-from bs4 import BeautifulSoup
-import random as rand
-
-intents = discord.Intents.default()
-intents.members = True
-bot = commands.Bot(command_prefix="!", intents=intents)
 
 class MadLibs(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    MAXIMUM_STORY_ID = 188
     @commands.command(name='madlibs', help='Asks for a series of words and forms a story with those words in it')
-    async def mad_libs(self, ctx):
-        num = '{:03}'.format(rand.randrange(1, 189))
-        url = f"https://www.madtakes.com/libs/{num}.html"
-        session = HTMLSession()
-        res = session.get(url)
-        soup = BeautifulSoup(res.content, 'html.parser')
+    async def mad_libs(self, ctx, story_id: int = None):
+        story_id = story_id or randrange(MadLibs.MAXIMUM_STORY_ID) + 1
+        if not (1 <= story_id <= MadLibs.MAXIMUM_STORY_ID):
+            await ctx.send(f"Sorry the story id '{story_id}' must be between 1 and {MadLibs.MAXIMUM_STORY_ID}")
+            return
 
-        title = res.html.find('title', first=True).text
-        await ctx.send (title)
-        user_inputs = soup.find(style='margin-bottom: 20px')
+        async with aiohttp.ClientSession() as client:
+            async with client.get(f"https://www.madtakes.com/libs/{story_id:03}.html") as response:
+                soup = BeautifulSoup(await response.content.read(), 'html.parser')
 
-        text_chunk = soup.find(bgcolor='#d0d0d0')
-        for i in text_chunk.select('br'):
-            i.replace_with('\n')
-        string = str(text_chunk.text).strip()
+        await ctx.send(soup.title.text)
+        check_response = lambda message: message.author == ctx.author and message.channel == ctx.channel
 
-        def countWord(word):
+        user_words = {}
+        madlids_form = soup.find(class_="mG_form")
 
-            numWord = 0
-            for i in range(1, len(word)-1):
-                if word[i-1:i+3] == 'WORD':
-                    numWord += 1
-            return numWord
+        # each row has a word we would ask for, we ignore the last row of the form which is a just button
+        # TODO: Add sanitization based on word type (i.e. NUMBER types should be made sure as a number)
+        for word_row in madlids_form.find_all("tr")[:-1]:
+            word_type = word_row.find('td').text
+            word_id = word_row.find('input').get('id')
 
-        input_list = []
-        inputs = user_inputs.find_all('td', align='right')
-        for word in inputs:
-            input_list.append(word.text)
+            try:
+                await ctx.send(f"Please enter a {word_type}:")
+                user_response = await self.bot.wait_for('message', check=check_response, timeout=30)
+                user_words[word_id] = user_response.content.lower()
+            except asyncio.TimeoutError:
+                await ctx.send("Sorry, you didn't respond in time. Please respond within 30 seconds!")
+                break
 
-        id_list = []
-        num_words = countWord(string)
-        for i in range(1, num_words+1):
-            ids = str(user_inputs.find(id=f"w{i}"))
-            if 'hidden' in ids:
-                index = ids.find('value')
-                id_num = ids[index+9]
-            else:
-                index = ids.find('id')
-                id_num = ids[index+5]
-            id_list.append(id_num)
+        # madtakes site has hidden word ids for reused words found in hidden inputs
+        # we ignore the last two hidden inputs because they are for randomization and word count
+        for hidden_input in madlids_form.find_all("input", type="hidden")[:-2]:
+            word_id = hidden_input.get("id")
+            source_id = f"w{hidden_input.get('value')[2:-1]}"
+            if source_id in user_words:
+                user_words[word_id] = user_words[source_id]
 
-        word_dict = {}
-        counter = 0
+        story_text = soup.find(class_="mG_glibbox")
+        for newline in story_text.select('br'):
+            newline.replace_with('\n')
+        for word_element in story_text.select("span", class_="mG_glibword"):
+            # every id in the word element is prefixed with 'mG_' so we substring it out
+            word_id = word_element.get("id")[3:]
+            word_element.replace_with(f"**__ {user_words.get(word_id, '[word not submitted]')} __**")
+        await ctx.send(str(story_text.text).strip())
 
-        def check(m):
-            return m.author == ctx.author and m.channel == ctx.channel
-
-        for i in range(num_words):
-            num = id_list[i]
-            if int(num) in word_dict.keys():
-                word_dict[i+1] = word_dict[int(num)]
-            elif counter<len(input_list):
-                try:
-                    await ctx.send(f"Please enter a {input_list[counter]}: ")
-                    answer = await self.bot.wait_for('message', check=check, timeout=30)
-                except asyncio.TimeoutError:
-                    await ctx.send("Sorry, you didn't respond in time. Please respond within 30 seconds!")
-                    break
-        
-                word_dict[i+1] = answer.content.lower()
-                counter += 1
-
-        for i in range(num_words):
-            string = string.replace("WORD", (f"**{word_dict[i+1]}**"), 1)
-            
-        await ctx.send(string)
 
 def setup(bot):
     bot.add_cog(MadLibs(bot))
