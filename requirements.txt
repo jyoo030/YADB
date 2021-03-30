@@ -1,0 +1,10 @@
+aiohttp
+bs4
+discord
+ffmpeg
+numpy
+pandas
+python-dotenv
+pytube
+requests-html
+tweepy

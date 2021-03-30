@@ -114,4 +114,9 @@ class TwitterListener(tweepy.StreamListener):
 
 
 def setup(bot):
-    bot.add_cog(Twitter(bot))
+    try:
+        bot.add_cog(Twitter(bot))
+    except tweepy.TweepError as error:
+        print("Failed to load twitter cog due to error in authentication (probably missing credentials) or api connection. It produced the following error message:")
+        print(f">   '{error}'")
+        print()
