@@ -116,7 +116,7 @@ class MusicPlayer(commands.Cog):
     @commands.command(name="skip", help="Skips currently playing song")
     async def skip_song(self, ctx):
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
-        if voice_client and voice_client.is_connected():
+        if voice_client and voice_client.is_connected() and self.music_listeners[ctx.guild.id].playing:
             # Stops current song from playing and triggers self.play_next
             voice_client.stop()
         else:
@@ -128,6 +128,7 @@ class MusicPlayer(commands.Cog):
         if voice_client and voice_client.is_connected():
             self.music_listeners[ctx.guild.id].playing = None
             await voice_client.disconnect()
+            print(f"Disconnected from voice channel in: {ctx.guild}")
         else:
             await ctx.send("I don't think I'm in a voice channel.")
 
