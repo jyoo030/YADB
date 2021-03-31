@@ -1,9 +1,12 @@
 aiohttp
 bs4
+cchardet
 discord
-ffmpeg
+ffmpeg-python
+lxml
 numpy
 pandas
+PyNaCl
 python-dotenv
 pytube
 requests-html

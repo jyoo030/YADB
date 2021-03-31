@@ -22,6 +22,7 @@ class Twitter(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        self.bot.guild_list["twitter"] = defaultdict(set)
         self.twitter_follows = self.bot.guild_list["twitter"]
         self.listener = TwitterListener(tweet_to_discord=self.tweet_to_discord, loop=asyncio.get_event_loop())
         self.tweet_stream = None
