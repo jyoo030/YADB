@@ -1,190 +1,163 @@
-from utilities.scraper import YoutubeDownloader
-import os, sys
 import asyncio
+from collections import defaultdict
 
 import discord
 from discord.ext import commands
 from discord.utils import get
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from utilities.youtube_scraper import search_youtube, Song
 
-# a list of 1-10 emojis that a user in discord can select to choose their song
-SELECTION_REACTS = ['1\N{combining enclosing keycap}',
-                    '2\N{combining enclosing keycap}',
-                    '3\N{combining enclosing keycap}',
-                    '4\N{combining enclosing keycap}',
-                    '5\N{combining enclosing keycap}',
-                    '6\N{combining enclosing keycap}',
-                    '7\N{combining enclosing keycap}',
-                    '8\N{combining enclosing keycap}',
-                    '9\N{combining enclosing keycap}',
-                    '\N{Keycap Ten}']
+
+class MusicListener:
+    def __init__(self):
+        self.queue = []
+        self.queue_lock = asyncio.Lock()
+        self.playing = None
 
 
 class MusicPlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._loop = asyncio.get_event_loop()
-        self.__set_save_path()
-
-    def __set_save_path(self):
-        self._BASE_SAVE_PATH = os.path.join(os.getcwd(), "Music")
-        self.__path_exists(self._BASE_SAVE_PATH)
-
-    def __path_exists(self, path):
-        if not os.path.exists(path):
-            os.makedirs(path)
-        return path
+        self.music_listeners = defaultdict(MusicListener)
 
     @commands.command(name="play", help="plays a song from youtube")
     async def instant_play(self, ctx, *, song_name):
-        song_select = await self._loop.run_in_executor(None, YoutubeDownloader().solo_search, song_name, self.__path_exists(os.path.join(self._BASE_SAVE_PATH, str(ctx.guild.id))))
-        song = await self._loop.run_in_executor(None, YoutubeDownloader().download, song_select)
+        music_listener = self.music_listeners[ctx.guild.id]
 
-        await self.__play_song(ctx, song)
+        # To avoid a race condition, we must secure a spot in the queue as soon as a user has requested it
+        # this can be done at the same time as actually searching for a song to play
+        _, search_results = await asyncio.gather(music_listener.queue_lock.acquire(), search_youtube(song_name, 1))
+        if not search_results:
+            await ctx.send(f"Sorry, unable to find any good matches for the song '{song_name}'.")
+            music_listener.queue_lock.release()
+            return
 
-    @instant_play.error
-    async def instant_play_error(self, ctx, error):
-        if isinstance(error, discord.ext.commands.errors.MissingRequiredArgument):
-            await ctx.send("You need to put a song name dummy!")
-        elif isinstance(error, discord.ext.commands.errors.CommandInvokeError):
-            await ctx.send("Sorry, the song already exists in the queue.")
-        else:
-            print(error)
-
-    async def __play_song(self, ctx, song):
-        voice_client = await self.join_vc_bot(ctx)
-        if not voice_client.is_playing():
-            self.bot.guild_list[ctx.guild.id]['curr_song'] = song
-            await ctx.send(f"Now Playing: {song.title}")
-            voice_client.play(discord.FFmpegPCMAudio(song.mp3), after=lambda e: self.__play_next(ctx, song.mp3))
-            voice_client.is_playing()
-        else:
-            self.bot.guild_list[ctx.guild.id]["queue"].append(song)
+        song = search_results[0]
+        music_listener.queue.append(song)
+        music_listener.queue_lock.release()
+        if music_listener.playing or not await self.start_playing(ctx):
             await ctx.send(f"Queued {song.title}")
 
-    def __play_next(self, ctx, old_song):
-        self.__song_cleanup(old_song)
-
-        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
-        if not voice_client:
-            return
-        elif len(self.bot.guild_list[ctx.guild.id]["queue"]) > 0:
-            song = self.bot.guild_list[ctx.guild.id]["queue"].pop(0)
-            self.bot.guild_list[ctx.guild.id]["curr_song"] = song
-            voice_client.play(discord.FFmpegPCMAudio(song.mp3), after=lambda e: self.__play_next(ctx, song.mp3))
-        else:
-            asyncio.run_coroutine_threadsafe(voice_client.disconnect(), self._loop)
-
+    # a list of 1-10 emojis that a user in discord can select to choose their song
+    SELECTION_REACTS = [f'{i}\N{combining enclosing keycap}' for i in range(1, 10)] + ['\N{Keycap Ten}']
     @commands.command(name="search", help="display and choose song from search")
     async def search_play(self, ctx, *, song_name):
-        def __search_reply_valid(reaction, user):
-            return user == ctx.author and reaction.emoji in SELECTION_REACTS
-        results = await self._loop.run_in_executor(None, YoutubeDownloader().multi_search, song_name, self.__path_exists(os.path.join(self._BASE_SAVE_PATH, str(ctx.guild.id))))
+        search_results = await search_youtube(song_name, 10)
+        if not search_results:
+            await ctx.send(f"Sorry, unable to find any good matches for the song '{song_name}'.")
+            return
 
-        output = f"Search Results for: {song_name}\n"
-        for index, result in enumerate(results):
-            output += f"{index+1}): {result.title}\n"
-        output += "\n Click on the number you want to play."
-        output += "\n Please wait for buttons 1-10 to load before selecting"
+        formatted_search = '\n'.join([f"{index + 1}): {song.title}" for index, song in enumerate(search_results)])
+        message_content = f"Search Results for '{song_name}':\n{formatted_search}\n\nClick on the number you want to play.\nOr add the emoji youself if you don't want to wait for buttons 1-10 to load."
+        results_message = await ctx.send(message_content)
 
-        result_msg = await ctx.send(output)
-
-        for i in range(len(results)):
-            await result_msg.add_reaction(SELECTION_REACTS[i])
+        reactions_subset = MusicPlayer.SELECTION_REACTS[:len(search_results)]
+        async def send_reactions():
+            for emoji in reactions_subset:
+                await results_message.add_reaction(emoji)
 
         try:
-            reaction, _ = await self.bot.wait_for('reaction_add', timeout=15.0, check=__search_reply_valid)
+            # We want the user to be able to react even before all the reactions have been sent, so we send them concurrenlty while waiting for a response
+            verify_response = lambda reaction, user: user == ctx.author and reaction.emoji in reactions_subset
+            _, (user_reaction, _) = await asyncio.gather(send_reactions(), self.bot.wait_for('reaction_add', timeout=20.0, check=verify_response))
         except asyncio.TimeoutError:
-            await ctx.send("You haven't made a valid selection for 15 seconds, or selected too early, so the search has been cancelled.")
+            await ctx.send("You haven't made a valid selection for 20 seconds, so the search has been cancelled.")
+            return
 
-        song_select = results[SELECTION_REACTS.index(reaction.emoji)]
-        try:
-            song = await self._loop.run_in_executor(None, YoutubeDownloader().download, song_select)
-        except Exception as err:
-            await ctx.send("the music player is still in alpha and crashes sometimes, please try again.")
-            raise err
+        song = search_results[reactions_subset.index(user_reaction.emoji)]
+        music_listener = self.music_listeners[ctx.guild.id]
+        await music_listener.queue_lock.acquire()
+        music_listener.queue.append(song)
+        music_listener.queue_lock.release()
+        if music_listener.playing or not await self.start_playing(ctx):
+            await ctx.send(f"Queued {song.title}")
 
-        await self.__play_song(ctx, song)
+    async def start_playing(self, ctx):
+        voice_client = await self.join_voice_channel(ctx)
+        if not voice_client:
+            return False
 
-    @search_play.error
-    async def search_play_error(self, ctx, error):
-        if isinstance(error, discord.ext.commands.errors.MissingRequiredArgument):
-            await ctx.send("You need to put a song name dummy!")
+        music_listener = self.music_listeners[ctx.guild.id]
+        music_listener.playing = music_listener.queue.pop()
+
+        loop = asyncio.get_event_loop()
+        play_next = lambda error: asyncio.run_coroutine_threadsafe(self.play_next(ctx), loop)
+        voice_client.play(discord.FFmpegPCMAudio(music_listener.playing.audio_url), after=play_next)
+        await ctx.send(f"Now Playing: {music_listener.playing.title}")
+        return True
+
+    async def play_next(self, ctx):
+        music_listener = self.music_listeners[ctx.guild.id]
+        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if len(music_listener.queue) == 0:
+            music_listener.playing = None
+            await voice_client.disconnect()
         else:
-            print(error)
+            await self.start_playing(ctx)
 
     @commands.command(name="queue", help="displays music queue")
     async def show_queue(self, ctx):
-        if len(self.bot.guild_list[ctx.guild.id]["queue"]) == 0:
-            await ctx.send("the queue is currently empty. try adding a song with !play <song_name>")
+        music_queue = self.music_listeners[ctx.guild.id].queue
+        if len(music_queue) == 0:
+            await ctx.send("The queue is currently empty. Try adding a song with !play <song_name>.")
         else:
-            output = "the current queue is: \n"
-            for index, song in enumerate(self.bot.guild_list[ctx.guild.id]["queue"]):
-                output += f"{index + 1}): {song.title}\n"
-
-            await ctx.send(output)
+            formatted_queue = '\n'.join([f"{index + 1}): {song.title}" for index, song in enumerate(music_queue)])
+            await ctx.send(f"The current queue is:\n{formatted_queue}")
 
     @commands.command(name="song", help="displays currently playing song")
     async def display_song(self, ctx):
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
-        if voice_client and voice_client.is_connected():
-            await ctx.send(f"The currently playing song is: {self.bot.guild_list[ctx.guild.id]['curr_song'].title}")
+        music_listener = self.music_listeners[ctx.guild.id]
+        if music_listener.playing and voice_client and voice_client.is_connected():
+            await ctx.send(f"The currently playing song is: {music_listener.playing.title}\n{music_listener.playing.video_url}")
         else:
             await ctx.send("There is no song currently playing.")
 
     @commands.command(name="skip", help="Skips currently playing song")
     async def skip_song(self, ctx):
-        if len(self.bot.guild_list[ctx.guild.id]['queue']) == 0:
-            await ctx.send("The queue is empty; No song to skip to. Use !leave to boot the bot from the voice channel")
-        else:
-            voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
-            if voice_client and voice_client.is_connected():
-                # Stops current song from playing and triggers self.play_next
-                voice_client.stop()
-
-    @commands.command(name="leave", help="makes the bot leave your voice channel")
-    async def leave_vc_bot(self, ctx):
-        for vc in self.bot.voice_clients:
-            if vc.guild == ctx.guild:
-                await vc.disconnect()
-                print(f"Disconnected from vc in: {ctx.guild}")
-                return
-        await ctx.send("I don't think I'm in a voice channel.")
-
-    @commands.command(name="join", help="makes the bot join your voice channel")
-    async def join_vc_bot(self, ctx):
-        if not ctx.author.voice:
-            await ctx.send("I can't play a song if you're not in a voice channel")
-            return
-
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
         if voice_client and voice_client.is_connected():
-            await voice_client.move_to(ctx.author.voice.channel)
+            # Stops current song from playing and triggers self.play_next
+            voice_client.stop()
         else:
-            user_vc = ctx.author.voice.channel
-            voice_client = await user_vc.connect()
-            print(f"The bot has connected to {user_vc}")
+            await ctx.send("No song currently playing. Use !leave to boot the bot from the voice channel.")
+
+    @commands.command(name="leave", help="makes the bot leave your voice channel")
+    async def leave_voice_channel(self, ctx):
+        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if voice_client and voice_client.is_connected():
+            self.music_listeners[ctx.guild.id].playing = None
+            await voice_client.disconnect()
+        else:
+            await ctx.send("I don't think I'm in a voice channel.")
+
+    @commands.command(name="join", help="makes the bot join your voice channel")
+    async def join_voice_channel(self, ctx):
+        if not ctx.author.voice:
+            await ctx.send("I can't play a song if you're not in a voice channel!")
+            return None
+
+        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if not voice_client or not voice_client.is_connected():
+            return await ctx.author.voice.channel.connect()
+        elif voice_client.channel != ctx.author.voice.channel:
+            await voice_client.move_to(ctx.author.voice.channel)
         return voice_client
 
     @commands.command(name="volume", help="adjust the volume of the bot")
-    async def adjust_vol(self, ctx, volume):
-        try:
-            volume = float(volume) / 100
-        except ValueError:
+    async def adjust_vol(self, ctx, volume: float):
+        volume /= 100
+        if not (0 <= volume <= 2):
             await ctx.send("send a number between 0 and 200 for volume!")
             return
 
-        vc = get(ctx.bot.voice_clients, guild=ctx.guild)
-        if volume < 0 or volume > 2.0:
-            await ctx.send("please send an value from 0-200")
-        elif not vc:
-            await ctx.send("can't adjust volume if nothing is playing")
+        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if not voice_client:
+            await ctx.send("Can't adjust volume if nothing is playing.")
+        elif isinstance(voice_client.source, discord.player.PCMVolumeTransformer):
+            voice_client.source.volume = volume
         else:
-            if isinstance(vc.source, discord.player.PCMVolumeTransformer):
-                vc.source.volume = volume
-            else:
-                vc.source = discord.PCMVolumeTransformer(vc.source, volume=volume)
+            voice_client.source = discord.PCMVolumeTransformer(voice_client.source, volume=volume)
 
     @commands.command(name="pause", help="Pauses music player")
     async def pause(self, ctx):
@@ -197,27 +170,25 @@ class MusicPlayer(commands.Cog):
     @commands.command(name="resume", help="Resumes paused playback")
     async def resume(self, ctx):
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
-        if voice_client and voice_client.is_connected() and voice_client.is_paused():
+        if not voice_client or not voice_client.is_connected() or len(self.music_listeners[ctx.guild.id].queue) == 0:
+            await ctx.send("Can't resume what hasn't been paused.")
+            return
+
+        if voice_client.is_paused():
             voice_client.resume()
         else:
-            await ctx.send("Can't resume what hasn't been paused.")
+            await self.start_playing(ctx)
 
     @commands.command(name="remove", help="Removes x position song from the queue")
-    async def remove(self, ctx, song_pos):
-        song_pos = int(song_pos)
-        if len(self.bot.guild_list[ctx.guild.id]['queue']) == 0:
+    async def remove(self, ctx, song_pos: int):
+        music_queue = self.music_listeners[ctx.guild.id].queue
+
+        if len(music_queue) == 0:
             await ctx.send("The queue is already empty. There is nothing to remove.")
-        elif song_pos > len(self.bot.guild_list[ctx.guild.id]['queue']) or (song_pos < 1):
+        elif not (1 <= song_pos <= len(music_queue)):
             await ctx.send("Invalid song position. Please try again.")
         else:
-            song = self.bot.guild_list[ctx.guild.id]['queue'].pop(song_pos - 1)
-            self.__song_cleanup(song.mp3)
-
-    def __song_cleanup(self, song_mp3_title):
-        if os.path.exists(song_mp3_title):
-            os.remove(song_mp3_title)
-        else:
-            print(f"Error deleting {song_mp3_title}")
+            song = music_queue.pop(song_pos - 1)
 
 
 def setup(bot):

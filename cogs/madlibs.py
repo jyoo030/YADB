@@ -2,7 +2,9 @@ import asyncio
 from random import randrange
 
 import aiohttp
+import cchardet
 import discord
+import lxml
 from bs4 import BeautifulSoup
 from discord.ext import commands
 from discord.utils import get
@@ -22,7 +24,7 @@ class MadLibs(commands.Cog):
 
         async with aiohttp.ClientSession() as client:
             async with client.get(f"https://www.madtakes.com/libs/{story_id:03}.html") as response:
-                soup = BeautifulSoup(await response.content.read(), 'html.parser')
+                soup = BeautifulSoup(await response.content.read(), 'lxml')
 
         await ctx.send(soup.title.text)
         check_response = lambda message: message.author == ctx.author and message.channel == ctx.channel
