@@ -18,7 +18,8 @@ class MusicListener:
 class MusicPlayer(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.music_listeners = defaultdict(MusicListener)
+        self.bot.guild_list["music"] = defaultdict(MusicListener)
+        self.music_listeners = self.bot.guild_list["music"]
 
     @commands.command(name="play", help="plays a song from youtube")
     async def instant_play(self, ctx, *, song_name):
