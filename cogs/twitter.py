@@ -3,6 +3,7 @@ import asyncio
 
 import discord
 from discord.ext import commands
+from collections import defaultdict
 from dotenv import load_dotenv
 import pytz
 
