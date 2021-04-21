@@ -59,7 +59,8 @@ class DefaultBotHandler(commands.Cog):
 if __name__ == "__main__":
     intents = discord.Intents.default()
     intents.members = True
-    bot = commands.Bot(command_prefix="!", intents=intents)
+    load_dotenv()
+    bot = commands.Bot(command_prefix=os.getenv("CMD"), intents=intents)
     bot.add_cog(DefaultBotHandler(bot))
     bot.load_extension("cogs.music")
     bot.load_extension("cogs.madlibs")
@@ -67,6 +68,5 @@ if __name__ == "__main__":
     bot.load_extension("cogs.covid_tracker")
     bot.load_extension("cogs.twitter")
 
-    load_dotenv()
     token = os.getenv("DISCORD_TOKEN")
     bot.run(token)
