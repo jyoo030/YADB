@@ -128,6 +128,7 @@ class MusicPlayer(commands.Cog):
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
         if voice_client and voice_client.is_connected():
             self.music_listeners[ctx.guild.id].playing = None
+            self.music_listeners[ctx.guild.id].queue.clear()
             await voice_client.disconnect()
             print(f"Disconnected from voice channel in: {ctx.guild}")
         else:
@@ -144,9 +145,11 @@ class MusicPlayer(commands.Cog):
             return await ctx.author.voice.channel.connect()
         elif voice_client.channel != ctx.author.voice.channel:
             await voice_client.move_to(ctx.author.voice.channel)
+        else:
+            await ctx.send("I'm already in your channel!")
         return voice_client
 
-    @commands.command(name="volume", help="adjust the volume of the bot")
+    @commands.command(name="volume", help="adjust the volume of the bot, from 0-200")
     async def adjust_vol(self, ctx, volume: float):
         volume /= 100
         if not (0 <= volume <= 2):
