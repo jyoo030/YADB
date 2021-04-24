@@ -79,7 +79,7 @@ class MusicPlayer(commands.Cog):
             return False
 
         music_listener = self.music_listeners[ctx.guild.id]
-        music_listener.playing = music_listener.queue.pop()
+        music_listener.playing = music_listener.queue.pop(0)
 
         loop = asyncio.get_event_loop()
         play_next = lambda error: asyncio.run_coroutine_threadsafe(self.play_next(ctx), loop)
