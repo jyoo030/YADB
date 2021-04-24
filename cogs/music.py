@@ -79,12 +79,12 @@ class MusicPlayer(commands.Cog):
             return False
 
         music_listener = self.music_listeners[ctx.guild.id]
-        music_listener.playing = music_listener.queue.pop()
+        music_listener.playing = music_listener.queue.pop(0)
 
         loop = asyncio.get_event_loop()
         play_next = lambda error: asyncio.run_coroutine_threadsafe(self.play_next(ctx), loop)
         voice_client.play(discord.FFmpegPCMAudio(music_listener.playing.audio_url), after=play_next)
-        await ctx.send(f"Now Playing: {music_listener.playing.title}")
+        await ctx.send(f"Now Playing: {music_listener.playing.title}\nhttps://youtube.com{music_listener.playing.video_url}")
         return True
 
     async def play_next(self, ctx):
@@ -172,7 +172,7 @@ class MusicPlayer(commands.Cog):
     @commands.command(name="resume", help="Resumes paused playback")
     async def resume(self, ctx):
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
-        if not voice_client or not voice_client.is_connected() or len(self.music_listeners[ctx.guild.id].queue) == 0:
+        if not voice_client or not voice_client.is_connected():
             await ctx.send("Can't resume what hasn't been paused.")
             return
 
