@@ -44,7 +44,7 @@ class DefaultBotHandler(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         parameters = list(map(str, ctx.command.params.values()))
-        command_usage = f"Command usage: !{ctx.command.name} [{'] ['.join(parameters[1:])}]."
+        command_usage = f"Command usage: !{ctx.command.name} [{'] ['.join(parameters[2:])}]."
         if isinstance(error, commands.MissingRequiredArgument):
             await ctx.send(f"Seems we are missing parameter '{error.param.name}'.\n{command_usage}")
         elif isinstance(error, commands.BadArgument):
