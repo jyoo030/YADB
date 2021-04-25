@@ -73,6 +73,9 @@ class MusicPlayer(commands.Cog):
         if music_listener.playing or not await self.start_playing(ctx):
             await ctx.send(f"Queued {song.title}")
 
+    # Options needed for the audio stream to not cutoff towards the end
+    # https://stackoverflow.com/questions/61959495/when-playing-audio-the-last-part-is-cut-off-how-can-this-be-fixed-discord-py
+    FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
     async def start_playing(self, ctx):
         voice_client = await self.join_voice_channel(ctx)
         if not voice_client:
@@ -83,7 +86,7 @@ class MusicPlayer(commands.Cog):
 
         loop = asyncio.get_event_loop()
         play_next = lambda error: asyncio.run_coroutine_threadsafe(self.play_next(ctx), loop)
-        voice_client.play(discord.FFmpegPCMAudio(music_listener.playing.audio_url), after=play_next)
+        voice_client.play(discord.FFmpegPCMAudio(music_listener.playing.audio_url, **MusicPlayer.FFMPEG_OPTIONS), after=play_next)
         await ctx.send(f"Now Playing: {music_listener.playing.title}\nhttps://youtube.com{music_listener.playing.video_url}")
         return True
 
