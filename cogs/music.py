@@ -2,6 +2,7 @@ import asyncio
 from collections import defaultdict
 
 import discord
+from discord.embeds import Embed
 from discord.ext import commands
 from discord.utils import get
 
@@ -20,16 +21,6 @@ class MusicPlayer(commands.Cog):
         self.bot = bot
         self.bot.guild_list["music"] = defaultdict(MusicListener)
         self.music_listeners = self.bot.guild_list["music"]
-    
-    async def can_play_song(self, ctx):
-        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
-        if not ctx.author.voice:
-            await ctx.send("You need to be in a voice channel to play music.")
-            return False
-        elif voice_client and ctx.author.voice.channel != voice_client.channel:
-            await ctx.send("Sorry, music is already playing in a different channel.")
-            return False
-        return True
 
     @commands.command(name="play", help="plays a song from youtube")
     async def instant_play(self, ctx, *, song_name):
@@ -52,7 +43,16 @@ class MusicPlayer(commands.Cog):
         music_listener.queue.append(song)
         music_listener.queue_lock.release()
         if music_listener.playing or not await self.start_playing(ctx):
-            await ctx.send(f"Queued {song.title}")
+            embed_fields = {'color': discord.Color.dark_gray(),
+                            'title': 'Queued:',
+                            'description': f'[{song.title}](https://youtube.com{song.video_url}) [{song.length}]',
+                            'fields': [{
+                                'name': 'Position',
+                                'value': len(music_listener.queue)
+                            }],
+                            'thumbnail': song.thumbnail
+            }
+            await ctx.send(embed=self.embedded_message(**embed_fields))
 
     # a list of 1-10 emojis that a user in discord can select to choose their song
     SELECTION_REACTS = [f'{i}\N{combining enclosing keycap}' for i in range(1, 10)] + ['\N{Keycap Ten}']
@@ -66,11 +66,16 @@ class MusicPlayer(commands.Cog):
             await ctx.send(f"Sorry, unable to find any good matches for the song '{song_name}'.")
             return
 
-        formatted_search = '\n'.join([f"{index + 1}): {song.title} [{song.length}]" for index, song in enumerate(search_results)])
-        message_content = f"Search Results for '{song_name}':\n{formatted_search}\n\nClick on the number you want to play.\nOr add the emoji youself if you don't want to wait for buttons 1-10 to load."
-        results_message = await ctx.send(message_content)
+        formatted_search = '\n'.join([f"{index + 1}): [{song.title}](https://youtube.com{song.video_url}) [{song.length}]\n" for index, song in enumerate(search_results)])
+        embed_fields = {'color': discord.Color.dark_gray(),
+                        'title': f"Search results for : ```{song_name}```",
+                        'description': formatted_search,
+                        'fields':  [{'name': "Click on the number you want to play, or click the X to cancel",
+                                     'value': "note: search will auto-cancel after 30 seconds"}]
+        }
+        results_message = await ctx.send(embed=self.embedded_message(**embed_fields))
 
-        reactions_subset = MusicPlayer.SELECTION_REACTS[:len(search_results)]
+        reactions_subset = MusicPlayer.SELECTION_REACTS[:len(search_results)] + ['\N{CROSS MARK}']
         async def send_reactions():
             for emoji in reactions_subset:
                 await results_message.add_reaction(emoji)
@@ -78,9 +83,13 @@ class MusicPlayer(commands.Cog):
         try:
             # We want the user to be able to react even before all the reactions have been sent, so we send them concurrenlty while waiting for a response
             verify_response = lambda reaction, user: user == ctx.author and reaction.emoji in reactions_subset
-            _, (user_reaction, _) = await asyncio.gather(send_reactions(), self.bot.wait_for('reaction_add', timeout=20.0, check=verify_response))
+            _, (user_reaction, _) = await asyncio.gather(send_reactions(), self.bot.wait_for('reaction_add', timeout=30.0, check=verify_response))
         except asyncio.TimeoutError:
-            await ctx.send("You haven't made a valid selection for 20 seconds, so the search has been cancelled.")
+            await ctx.send("You haven't made a valid selection for 30 seconds, so the search has been cancelled.")
+            return
+
+        if user_reaction.emoji == '\N{CROSS MARK}':
+            await ctx.send("Search cancelled")
             return
 
         song = search_results[reactions_subset.index(user_reaction.emoji)]
@@ -91,37 +100,16 @@ class MusicPlayer(commands.Cog):
         music_listener.queue.append(song)
         music_listener.queue_lock.release()
         if music_listener.playing or not await self.start_playing(ctx):
-            await ctx.send(f"Queued {song.title}")
-
-    # Options needed for the audio stream to not cutoff towards the end
-    # https://stackoverflow.com/questions/61959495/when-playing-audio-the-last-part-is-cut-off-how-can-this-be-fixed-discord-py
-    FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
-    async def start_playing(self, ctx):
-        voice_client = await self.join_voice_channel(ctx)
-        if not voice_client:
-            return False
-
-        music_listener = self.music_listeners[ctx.guild.id]
-        music_listener.playing = music_listener.queue.pop(0)
-
-        loop = asyncio.get_event_loop()
-        play_next = lambda error: asyncio.run_coroutine_threadsafe(self.play_next(ctx), loop)
-        voice_client.play(discord.FFmpegPCMAudio(music_listener.playing.audio_url, **MusicPlayer.FFMPEG_OPTIONS), after=play_next)
-        message = discord.Embed(color=discord.Color.blue())
-        message.add_field(name="Now Playing:", value=f"[{music_listener.playing.title}](https://youtube.com{music_listener.playing.video_url}) [{music_listener.playing.length}]")
-        message.set_author(name=music_listener.playing.requester, icon_url=music_listener.playing.avatar_url)
-        message.set_thumbnail(url=music_listener.playing.thumbnail)
-        await ctx.send(embed=message)
-        return True
-
-    async def play_next(self, ctx):
-        music_listener = self.music_listeners[ctx.guild.id]
-        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
-        if len(music_listener.queue) == 0:
-            music_listener.playing = None
-            await voice_client.disconnect()
-        else:
-            await self.start_playing(ctx)
+            embed_fields = {'color': discord.Color.dark_gray(),
+                            'title': 'Queued:',
+                            'description': f'[{song.title}](https://youtube.com{song.video_url}) [{song.length}]',
+                            'fields': [{
+                                'name': 'Position',
+                                'value': len(music_listener.queue)
+                            }],
+                            'thumbnail': song.thumbnail
+            }
+            await ctx.send(embed=self.embedded_message(**embed_fields))
 
     @commands.command(name="queue", help="displays music queue")
     async def show_queue(self, ctx):
@@ -129,19 +117,29 @@ class MusicPlayer(commands.Cog):
         if len(music_queue) == 0:
             await ctx.send("The queue is currently empty. Try adding a song with !play <song_name>.")
         else:
-            formatted_queue = '\n'.join([f"{index + 1}): {song.title}" for index, song in enumerate(music_queue)])
-            await ctx.send(f"The current queue is:\n{formatted_queue}")
+            formatted_queue = '\n'.join([f"{index + 1}): [{song.title}](https://youtube.com{song.video_url}) [{song.length}] | {song.requester}" for index, song in enumerate(music_queue)])
+            embed_fields = {'color': discord.Color.dark_gray(),
+                            'title': 'Current Queue:',
+                            'description': formatted_queue
+            }
+            await ctx.send(embed=self.embedded_message(**embed_fields))
 
     @commands.command(name="song", help="displays currently playing song")
     async def display_song(self, ctx):
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
         music_listener = self.music_listeners[ctx.guild.id]
         if music_listener.playing and voice_client and voice_client.is_connected():
-            message = discord.Embed(color=discord.Color.dark_gray())
-            message.add_field(name="Currently Playing:", value=f"[{music_listener.playing.title}](https://youtube.com{music_listener.playing.video_url}) [{music_listener.playing.length}]")
-            message.set_author(name=music_listener.playing.requester, icon_url=music_listener.playing.avatar_url)
-            message.set_thumbnail(url=music_listener.playing.thumbnail)
-            await ctx.send(embed=message)
+            embed_fields = {'color': discord.Color.blue(),
+                            'fields': [
+                                {'name': 'Currently Playing:',
+                                 'value': f"[{music_listener.playing.title}](https://youtube.com{music_listener.playing.video_url}) [{music_listener.playing.length}]"}
+                            ],
+                            'author': {'name': music_listener.playing.requester,
+                                       'icon_url': music_listener.playing.avatar_url
+                            },
+                            'thumbnail': music_listener.playing.thumbnail
+            }
+            await ctx.send(embed=self.embedded_message(**embed_fields))
         else:
             await ctx.send("There is no song currently playing.")
 
@@ -224,7 +222,74 @@ class MusicPlayer(commands.Cog):
         elif not (1 <= song_pos <= len(music_queue)):
             await ctx.send("Invalid song position. Please try again.")
         else:
-            song = music_queue.pop(song_pos - 1)
+            music_queue.pop(song_pos - 1)
+
+
+    #region Non-Command Functions
+    async def can_play_song(self, ctx):
+        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if not ctx.author.voice:
+            await ctx.send("You need to be in a voice channel to play music.")
+            return False
+        elif voice_client and ctx.author.voice.channel != voice_client.channel:
+            await ctx.send("Sorry, music is already playing in a different channel.")
+            return False
+        return True
+
+    # Options needed for the audio stream to not cutoff towards the end
+    # https://stackoverflow.com/questions/61959495/when-playing-audio-the-last-part-is-cut-off-how-can-this-be-fixed-discord-py
+    FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
+    async def start_playing(self, ctx):
+        voice_client = await self.join_voice_channel(ctx)
+        if not voice_client:
+            return False
+
+        music_listener = self.music_listeners[ctx.guild.id]
+        music_listener.playing = music_listener.queue.pop(0)
+
+        loop = asyncio.get_event_loop()
+        play_next = lambda error: asyncio.run_coroutine_threadsafe(self.play_next(ctx), loop)
+        voice_client.play(discord.FFmpegPCMAudio(music_listener.playing.audio_url, **MusicPlayer.FFMPEG_OPTIONS), after=play_next)
+        embed_fields = {'color': discord.Color.blue(),
+                        'fields': [
+                            {'name': 'Now Playing:',
+                             'value': f"[{music_listener.playing.title}](https://youtube.com{music_listener.playing.video_url}) [{music_listener.playing.length}]"}
+                        ],
+                        'author': {'name': music_listener.playing.requester,
+                                   'icon_url': music_listener.playing.avatar_url
+                        },
+                        'thumbnail': music_listener.playing.thumbnail
+        }
+        await ctx.send(embed=self.embedded_message(**embed_fields))
+        return True
+
+    async def play_next(self, ctx):
+        music_listener = self.music_listeners[ctx.guild.id]
+        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if len(music_listener.queue) == 0:
+            music_listener.playing = None
+            await voice_client.disconnect()
+        else:
+            await self.start_playing(ctx)
+
+    def embedded_message(self, color=None, author=None, thumbnail=None, fields=None, title=None, description=None, inline=False):
+        message = discord.Embed()
+        if title:
+            message.title = title
+        if description:
+            message.description = description
+        if color:
+            message.color = color
+        if author:
+            message.set_author(name=author['name'], icon_url=author['icon_url'])
+        if thumbnail:
+            message.set_thumbnail(url=thumbnail)
+        if fields:
+            for field in fields:
+                message.add_field(name=field['name'], value=field['value'], inline=field['inline'] if 'inline' in field.keys() else inline)
+        return message
+
+    #endregion
 
 
 def setup(bot):
