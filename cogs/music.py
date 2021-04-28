@@ -20,9 +20,22 @@ class MusicPlayer(commands.Cog):
         self.bot = bot
         self.bot.guild_list["music"] = defaultdict(MusicListener)
         self.music_listeners = self.bot.guild_list["music"]
+    
+    async def can_play_song(self, ctx):
+        voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
+        if not ctx.author.voice:
+            await ctx.send("You need to be in a voice channel to play music.")
+            return False
+        elif voice_client and ctx.author.voice.channel != voice_client.channel:
+            await ctx.send("Sorry, music is already playing in a different channel.")
+            return False
+        return True
 
     @commands.command(name="play", help="plays a song from youtube")
     async def instant_play(self, ctx, *, song_name):
+        if not await self.can_play_song(ctx):
+            return
+
         music_listener = self.music_listeners[ctx.guild.id]
 
         # To avoid a race condition, we must secure a spot in the queue as soon as a user has requested it
@@ -34,6 +47,8 @@ class MusicPlayer(commands.Cog):
             return
 
         song = search_results[0]
+        song.requester = ctx.author.display_name
+        song.avatar_url = ctx.author.avatar_url
         music_listener.queue.append(song)
         music_listener.queue_lock.release()
         if music_listener.playing or not await self.start_playing(ctx):
@@ -43,12 +58,15 @@ class MusicPlayer(commands.Cog):
     SELECTION_REACTS = [f'{i}\N{combining enclosing keycap}' for i in range(1, 10)] + ['\N{Keycap Ten}']
     @commands.command(name="search", help="display and choose song from search")
     async def search_play(self, ctx, *, song_name):
+        if not await self.can_play_song(ctx):
+            return
+
         search_results = await search_youtube(song_name, 10)
         if not search_results:
             await ctx.send(f"Sorry, unable to find any good matches for the song '{song_name}'.")
             return
 
-        formatted_search = '\n'.join([f"{index + 1}): {song.title}" for index, song in enumerate(search_results)])
+        formatted_search = '\n'.join([f"{index + 1}): {song.title} [{song.length}]" for index, song in enumerate(search_results)])
         message_content = f"Search Results for '{song_name}':\n{formatted_search}\n\nClick on the number you want to play.\nOr add the emoji youself if you don't want to wait for buttons 1-10 to load."
         results_message = await ctx.send(message_content)
 
@@ -66,6 +84,8 @@ class MusicPlayer(commands.Cog):
             return
 
         song = search_results[reactions_subset.index(user_reaction.emoji)]
+        song.requester = ctx.author.display_name
+        song.avatar_url = ctx.author.avatar_url
         music_listener = self.music_listeners[ctx.guild.id]
         await music_listener.queue_lock.acquire()
         music_listener.queue.append(song)
@@ -87,7 +107,11 @@ class MusicPlayer(commands.Cog):
         loop = asyncio.get_event_loop()
         play_next = lambda error: asyncio.run_coroutine_threadsafe(self.play_next(ctx), loop)
         voice_client.play(discord.FFmpegPCMAudio(music_listener.playing.audio_url, **MusicPlayer.FFMPEG_OPTIONS), after=play_next)
-        await ctx.send(f"Now Playing: {music_listener.playing.title}\nhttps://youtube.com{music_listener.playing.video_url}")
+        message = discord.Embed(color=discord.Color.blue())
+        message.add_field(name="Now Playing:", value=f"[{music_listener.playing.title}](https://youtube.com{music_listener.playing.video_url}) [{music_listener.playing.length}]")
+        message.set_author(name=music_listener.playing.requester, icon_url=music_listener.playing.avatar_url)
+        message.set_thumbnail(url=music_listener.playing.thumbnail)
+        await ctx.send(embed=message)
         return True
 
     async def play_next(self, ctx):
@@ -113,7 +137,11 @@ class MusicPlayer(commands.Cog):
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
         music_listener = self.music_listeners[ctx.guild.id]
         if music_listener.playing and voice_client and voice_client.is_connected():
-            await ctx.send(f"The currently playing song is: {music_listener.playing.title}\n{music_listener.playing.video_url}")
+            message = discord.Embed(color=discord.Color.dark_gray())
+            message.add_field(name="Currently Playing:", value=f"[{music_listener.playing.title}](https://youtube.com{music_listener.playing.video_url}) [{music_listener.playing.length}]")
+            message.set_author(name=music_listener.playing.requester, icon_url=music_listener.playing.avatar_url)
+            message.set_thumbnail(url=music_listener.playing.thumbnail)
+            await ctx.send(embed=message)
         else:
             await ctx.send("There is no song currently playing.")
 
@@ -140,7 +168,7 @@ class MusicPlayer(commands.Cog):
     @commands.command(name="join", help="makes the bot join your voice channel")
     async def join_voice_channel(self, ctx):
         if not ctx.author.voice:
-            await ctx.send("I can't play a song if you're not in a voice channel!")
+            await ctx.send("I can't join if you're not in a voice channel!")
             return None
 
         voice_client = get(ctx.bot.voice_clients, guild=ctx.guild)
@@ -148,7 +176,7 @@ class MusicPlayer(commands.Cog):
             return await ctx.author.voice.channel.connect()
         elif voice_client.channel != ctx.author.voice.channel:
             await voice_client.move_to(ctx.author.voice.channel)
-        else:
+        elif ctx.command.name == "join":
             await ctx.send("I'm already in your channel!")
         return voice_client
 

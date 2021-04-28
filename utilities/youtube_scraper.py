@@ -13,6 +13,10 @@ from pytube import YouTube
 class Song:
     title: str
     video_url: str
+    length: str
+    thumbnail: str
+    requester: str = None
+    avatar_url: str = None
 
     @property
     def audio_url(self):
@@ -48,6 +52,10 @@ async def search_youtube(query, max_results = 10, max_attempts = 3):
 
             song_titles = [result['videoRenderer']['title']['runs'][0]['text'] for result in video_results]
             song_urls = [result['videoRenderer']['navigationEndpoint']['commandMetadata']['webCommandMetadata']['url'] for result in video_results]
-            return [Song(title, url) for title, url in zip(song_titles, song_urls)]
+            LIVE_LENGTH_DATA = {'simpleText': 'LIVE'}
+            #FIXME: When attempting to stream LIVE videos the bot exits after a few seconds
+            song_lengths = [result['videoRenderer'].get('lengthText', LIVE_LENGTH_DATA)['simpleText'] for result in video_results]
+            song_thumbnails = [result['videoRenderer']['thumbnail']['thumbnails'][0]["url"] for result in video_results]
+            return [Song(title, url, length, thumbnail) for title, url, length, thumbnail in zip(song_titles, song_urls, song_lengths, song_thumbnails)]
 
     return []
