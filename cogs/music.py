@@ -47,6 +47,8 @@ class MusicPlayer(commands.Cog):
             return
 
         song = search_results[0]
+        song.requester = ctx.author.display_name
+        song.avatar_url = ctx.author.avatar_url
         music_listener.queue.append(song)
         music_listener.queue_lock.release()
         if music_listener.playing or not await self.start_playing(ctx):
@@ -64,7 +66,7 @@ class MusicPlayer(commands.Cog):
             await ctx.send(f"Sorry, unable to find any good matches for the song '{song_name}'.")
             return
 
-        formatted_search = '\n'.join([f"{index + 1}): {song.title}" for index, song in enumerate(search_results)])
+        formatted_search = '\n'.join([f"{index + 1}): {song.title} [{song.length}]" for index, song in enumerate(search_results)])
         message_content = f"Search Results for '{song_name}':\n{formatted_search}\n\nClick on the number you want to play.\nOr add the emoji youself if you don't want to wait for buttons 1-10 to load."
         results_message = await ctx.send(message_content)
 
@@ -82,6 +84,8 @@ class MusicPlayer(commands.Cog):
             return
 
         song = search_results[reactions_subset.index(user_reaction.emoji)]
+        song.requester = ctx.author.display_name
+        song.avatar_url = ctx.author.avatar_url
         music_listener = self.music_listeners[ctx.guild.id]
         await music_listener.queue_lock.acquire()
         music_listener.queue.append(song)
@@ -105,7 +109,7 @@ class MusicPlayer(commands.Cog):
         voice_client.play(discord.FFmpegPCMAudio(music_listener.playing.audio_url, **MusicPlayer.FFMPEG_OPTIONS), after=play_next)
         message = discord.Embed(color=discord.Color.blue())
         message.add_field(name="Now Playing:", value=f"[{music_listener.playing.title}](https://youtube.com{music_listener.playing.video_url}) [{music_listener.playing.length}]")
-        message.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar_url)
+        message.set_author(name=music_listener.playing.requester, icon_url=music_listener.playing.avatar_url)
         message.set_thumbnail(url=music_listener.playing.thumbnail)
         await ctx.send(embed=message)
         return True
@@ -135,6 +139,7 @@ class MusicPlayer(commands.Cog):
         if music_listener.playing and voice_client and voice_client.is_connected():
             message = discord.Embed(color=discord.Color.dark_gray())
             message.add_field(name="Currently Playing:", value=f"[{music_listener.playing.title}](https://youtube.com{music_listener.playing.video_url}) [{music_listener.playing.length}]")
+            message.set_author(name=music_listener.playing.requester, icon_url=music_listener.playing.avatar_url)
             message.set_thumbnail(url=music_listener.playing.thumbnail)
             await ctx.send(embed=message)
         else:
