@@ -75,7 +75,7 @@ class MusicPlayer(commands.Cog):
             'description': formatted_search,
             'fields':  [{
                 'name': "Click on the number you want to play, or click the X to cancel",
-                'value': "note: search will auto-cancel after 30 seconds"
+                'value': "Note: search will auto-cancel after 30 seconds"
             }]
         }
         results_message = await ctx.send(embed=discord.Embed().from_dict(embed_fields))
