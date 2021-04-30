@@ -51,7 +51,7 @@ class MusicPlayer(commands.Cog):
                     'name': 'Position',
                     'value': len(music_listener.queue)
                 }],
-                'thumbnail': {'url': music_listener.playing.thumbnail}
+                'thumbnail': {'url': song.thumbnail}
             }
             await ctx.send(embed=discord.Embed.from_dict(embed_fields))
 
