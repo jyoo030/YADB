@@ -66,7 +66,8 @@ if __name__ == "__main__":
     bot.load_extension("cogs.madlibs")
     bot.load_extension("cogs.games")
     bot.load_extension("cogs.covid_tracker")
-    bot.load_extension("cogs.twitter")
+    bot.load_extension("cogs.gpu_tracker")
+    # bot.load_extension("cogs.twitter")
 
     token = os.getenv("DISCORD_TOKEN")
     bot.run(token)

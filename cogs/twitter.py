@@ -73,7 +73,7 @@ class Twitter(commands.Cog):
     async def get_user(self, handle, ctx):
         try:
             return self.api.get_user(screen_name=handle)
-        except tweepy.TweepError as tweep:
+        except tweepy.TweepyException as tweep:
             if tweep.api_code == 50:
                 await ctx.send("User not found. Please make sure they're public and spelled properly")
             else:
@@ -96,7 +96,7 @@ class Twitter(commands.Cog):
             await asyncio.gather(*[channel.send(discord_message) for channel in follower_channels])
 
 
-class TwitterListener(tweepy.StreamListener):
+class TwitterListener(tweepy.Stream):
     def __init__(self, tweet_to_discord, loop):
         super(TwitterListener, self).__init__()
         self.tweet_to_discord = tweet_to_discord
@@ -118,7 +118,7 @@ class TwitterListener(tweepy.StreamListener):
 def setup(bot):
     try:
         bot.add_cog(Twitter(bot))
-    except tweepy.TweepError as error:
+    except tweepy.TweepyException as error:
         print("Failed to load twitter cog due to error in authentication (probably missing credentials) or api connection. It produced the following error message:")
         print(f">   '{error}'")
         print()
