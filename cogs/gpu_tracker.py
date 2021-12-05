@@ -6,6 +6,7 @@ from arsenic.services import Geckodriver
 
 import discord
 from discord.ext import commands
+from dotenv import load_dotenv
 
 class GPUTracker(commands.Cog):
     def __init__(self):
@@ -15,7 +16,10 @@ class GPUTracker(commands.Cog):
     @commands.command(name="track", help="Adds a tracker for GPU Drops from Best Buy")
     async def track_gpu(self, ctx):
         await ctx.send("Tracking RTX 3080 from Best Buy")
-        async with get_session(Geckodriver(), Firefox(**{'moz:firefoxOptions': {'args': ['-headless']}})) as session:
+        load_dotenv()
+        gecko = Geckodriver()
+        gecko.binary =  os.getenv("GECOKDRIVER_PATH")
+        async with get_session(gecko, Firefox(**{'moz:firefoxOptions': {'args': ['-headless']}})) as session:
             while True:
                 await asyncio.gather(
                         asyncio.sleep(60),
