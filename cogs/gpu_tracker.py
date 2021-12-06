@@ -30,6 +30,7 @@ class GPUTracker(commands.Cog):
 
         async with aiohttp.ClientSession() as session:
             async with session.get(self.BB_3080_URL, headers=headers) as resp:
+                print("Got gpu list, parsing now...")
                 tree = html.fromstring(await resp.text())
 
                 name = tree.xpath('//*[@id="main-results"]/ol/li/div/div/div/div/div/div[2]/div[1]/div[2]/div/h4/a/text()')
